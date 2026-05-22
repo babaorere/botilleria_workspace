@@ -16,18 +16,20 @@ from __future__ import annotations
 import os
 import sys
 import uuid
+from importlib.util import find_spec
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-# Mock heavy dependencies before importing project modules
-sys.modules["google"] = MagicMock()
-sys.modules["google.adk"] = MagicMock()
-sys.modules["google.adk.models"] = MagicMock()
-sys.modules["google.adk.models.lite_llm"] = MagicMock()
-sys.modules["google.adk.sessions"] = MagicMock()
-sys.modules["google.genai"] = MagicMock()
-sys.modules["google.genai.types"] = MagicMock()
+# Mock heavy dependencies only when ADK is not installed in the environment.
+if find_spec("google.adk") is None:
+    sys.modules["google"] = MagicMock()
+    sys.modules["google.adk"] = MagicMock()
+    sys.modules["google.adk.models"] = MagicMock()
+    sys.modules["google.adk.models.lite_llm"] = MagicMock()
+    sys.modules["google.adk.sessions"] = MagicMock()
+    sys.modules["google.genai"] = MagicMock()
+    sys.modules["google.genai.types"] = MagicMock()
 
 
 # ============================================================================

@@ -7,12 +7,19 @@ from typing import AsyncGenerator
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from redis.asyncio import Redis
 from sqlalchemy.orm import Session
 
 from config.database import _sync_engine, Base, enable_rls_on_startup, SessionLocal
+from config.redis import create_redis_client
 from config.settings import settings
 from models import Tenant  # noqa: F401
-from services import TenantService, LLMService, create_llm_service
+from services import (
+    TenantService,
+    LLMService,
+    create_llm_service,
+    create_session_service,
+)
 from exceptions import register_exception_handlers
 from middleware import RequestIdMiddleware
 from controllers import (
@@ -32,6 +39,7 @@ logging.basicConfig(
 )
 
 _llm_service: LLMService | None = None
+_redis_client: Redis | None = None
 
 
 def get_llm_service() -> LLMService:
@@ -80,6 +88,7 @@ def seed_default_tenant(db: Session) -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     global _llm_service
+    global _redis_client
 
     Base.metadata.create_all(bind=_sync_engine)
     logger.info("DB tables created")
@@ -92,16 +101,30 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
         seed_default_tenant(seed_db)
         seed_db.commit()
 
-    _llm_service = create_llm_service()
+    session_service = create_session_service(config=settings)
+    if settings.use_redis_sessions:
+        _redis_client = create_redis_client()
+        await _redis_client.ping()
+        session_service = create_session_service(
+            config=settings,
+            redis_client=_redis_client,
+        )
+        logger.info("Redis session backend initialized")
+
+    _llm_service = create_llm_service(session_service=session_service)
     logger.info(
-        "LLMService initialized — worker PID=%s, model=%s",
+        "LLMService initialized — worker PID=%s, model=%s, session_backend=%s",
         os.getpid(),
         settings.model_display,
+        settings.session_backend,
     )
 
     yield
 
     _llm_service = None
+    if _redis_client is not None:
+        await _redis_client.aclose()
+        _redis_client = None
     logger.info("LLMService shut down")
 
 

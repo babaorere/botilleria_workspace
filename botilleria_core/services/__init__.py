@@ -13,6 +13,8 @@ __all__ = [
     "KBService",
     "ProductService",
     "RAGContextBuilder",
+    "RedisSessionService",
+    "create_session_service",
     "AgentFactory",
     "transactional",
 ]
@@ -32,6 +34,14 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     "RAGContextBuilder": (
         "services.rag_context_builder",
         "RAGContextBuilder",
+    ),
+    "RedisSessionService": (
+        "services.redis_session_service",
+        "RedisSessionService",
+    ),
+    "create_session_service": (
+        "services.session_service_factory",
+        "create_session_service",
     ),
     "AgentFactory": ("services.agent_factory", "AgentFactory"),
     "transactional": ("services.transactional", "transactional"),

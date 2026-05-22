@@ -7,32 +7,29 @@ from typing import Any, AsyncGenerator
 
 from google.adk import Agent, Runner
 from google.adk.models.lite_llm import LiteLlm
-from google.adk.sessions import InMemorySessionService
+from google.adk.sessions.base_session_service import BaseSessionService
 from google.genai import types
 
 from models.tenant import Tenant
+from services.session_service_factory import create_session_service
 
 logger = logging.getLogger(__name__)
 
 
 class LLMService:
-    def __init__(self) -> None:
+    def __init__(self, session_service: BaseSessionService | None = None) -> None:
         self._runners: dict[str, Runner] = {}
-        self._session_service = InMemorySessionService()
+        self._runner_specs: dict[str, tuple[str, str]] = {}
+        self._session_service = session_service or create_session_service()
 
-    def _get_runner(self, tenant: Tenant, rag_context: str | None = None) -> Runner:
+    def _get_runner(self, tenant: Tenant) -> Runner:
         tenant_key = str(tenant.id)
-        instruction = tenant.get_instruction()
-        if rag_context:
-            instruction = (
-                f"{instruction}\n\n"
-                f"{rag_context}\n\n"
-                f"Usa la información anterior para responder con precisión. "
-                f"Si la información no es suficiente, responde honestamente "
-                f"y ofrece contactar a un humano."
-            )
+        current_spec = (tenant.get_model(), tenant.get_instruction())
 
-        if tenant_key not in self._runners:
+        if (
+            tenant_key not in self._runners
+            or self._runner_specs.get(tenant_key) != current_spec
+        ):
             api_key = tenant.get_api_key() or os.getenv("OPENROUTER_API_KEY")
             if not api_key:
                 raise RuntimeError(
@@ -42,7 +39,7 @@ class LLMService:
             agent = Agent(
                 name=f"{tenant.slug}_{int(time.time())}",
                 model=LiteLlm(model=tenant.get_model(), api_key=api_key),
-                instruction=instruction,
+                instruction=tenant.get_instruction(),
                 tools=[],
             )
 
@@ -52,6 +49,7 @@ class LLMService:
                 session_service=self._session_service,
                 auto_create_session=True,
             )
+            self._runner_specs[tenant_key] = current_spec
             logger.info(
                 "Runner created for tenant: %s (model=%s)",
                 tenant.slug,
@@ -69,9 +67,14 @@ class LLMService:
         rag_context: str | None = None,
     ) -> str:
         try:
-            runner = self._get_runner(tenant, rag_context)
+            runner = self._get_runner(tenant)
             full_response: list[str] = []
-            content = types.Content(role="user", parts=[types.Part(text=message)])
+            content = types.Content(
+                role="user",
+                parts=[
+                    types.Part(text=self._build_input_message(message, rag_context))
+                ],
+            )
 
             async for event in runner.run_async(
                 user_id=user_id,
@@ -107,8 +110,13 @@ class LLMService:
         rag_context: str | None = None,
     ) -> AsyncGenerator[str, None]:
         try:
-            runner = self._get_runner(tenant, rag_context)
-            content = types.Content(role="user", parts=[types.Part(text=message)])
+            runner = self._get_runner(tenant)
+            content = types.Content(
+                role="user",
+                parts=[
+                    types.Part(text=self._build_input_message(message, rag_context))
+                ],
+            )
 
             async for event in runner.run_async(
                 user_id=user_id,
@@ -164,6 +172,19 @@ class LLMService:
             )
             raise
 
+    def _build_input_message(self, message: str, rag_context: str | None) -> str:
+        if not rag_context:
+            return message
+        return (
+            "CONTEXTO DE CONOCIMIENTO DEL NEGOCIO PARA ESTA CONSULTA:\n"
+            f"{rag_context}\n\n"
+            "Usa el contexto anterior solo si es relevante para responder. "
+            "Si no alcanza, responde con honestidad y ofrece contactar a un humano.\n\n"
+            f"MENSAJE DEL USUARIO:\n{message}"
+        )
 
-def create_llm_service() -> LLMService:
-    return LLMService()
+
+def create_llm_service(
+    session_service: BaseSessionService | None = None,
+) -> LLMService:
+    return LLMService(session_service=session_service)

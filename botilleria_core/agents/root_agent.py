@@ -8,8 +8,8 @@ from zoneinfo import ZoneInfo
 
 from google.adk import Agent, Runner
 from google.adk.models.lite_llm import LiteLlm
-from google.adk.sessions import InMemorySessionService
 
+from services.session_service_factory import create_session_service
 from .constants import GADK_APP_NAME, GADK_INSTRUCTION, GADK_MODEL
 
 
@@ -179,7 +179,7 @@ _BOTILLERIA_TOOLS = [
 # AGENTE GADK — Patrón idéntico a booking-titanium-wm
 # ============================================================================
 # - LiteLlm + OpenRouter (NO Gemini directo)
-# - InMemorySessionService (NO DatabaseSessionService)
+# - Redis session backend en producción; memoria solo para fallback explícito
 # - Agent/Runner cacheados (singleton por proceso)
 # ============================================================================
 
@@ -211,11 +211,10 @@ def _get_runner() -> Runner:
     """Crea o retorna el Runner ADK cacheado (singleton por proceso)."""
     global _runner_cache
     if _runner_cache is None:
-        session_service = InMemorySessionService()
         _runner_cache = Runner(
             agent=_get_agent(),
             app_name=GADK_APP_NAME,
-            session_service=session_service,
+            session_service=create_session_service(),
             auto_create_session=True,
         )
     return _runner_cache

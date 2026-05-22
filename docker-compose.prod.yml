@@ -12,6 +12,28 @@ x-logging: &default-logging
     compress: "true"
 
 services:
+  redis:
+    image: redis:7.4-alpine
+    container_name: botilleria_redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1000"]
+    volumes:
+      - redis_data:/data
+    networks:
+      - botilleria_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 64M
+
   # ── Nginx: Static files + Reverse Proxy ──────────────────────────────────
   nginx:
     image: nginx:1.27-alpine
@@ -59,6 +81,9 @@ services:
     networks:
       - botilleria_net
       - booking-titanium-wm_default
+    depends_on:
+      redis:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
@@ -93,6 +118,7 @@ services:
 
 volumes:
   botilleria_venv:
+  redis_data:
   nginx_cache:
   nginx_run:
 

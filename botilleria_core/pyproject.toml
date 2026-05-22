@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=82", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "botilleria-core"
 version = "0.3.0"
@@ -15,6 +19,7 @@ dependencies = [
     "pydantic>=2.0",
     "pydantic-settings>=2.0",
     "python-dotenv>=1.0",
+    "redis>=7.4.0",
     "alembic>=1.13",
     "sse-starlette>=2.0",
 ]
@@ -31,4 +36,27 @@ asyncio_mode = "auto"
 cache_dir = "/tmp/botilleria_core_pytest_cache"
 markers = [
     "integration: tests that require a running API service or external process",
+]
+
+[tool.setuptools]
+py-modules = []
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = [
+    "agents",
+    "config",
+    "controllers",
+    "dtos",
+    "dtos.*",
+    "exceptions",
+    "middleware",
+    "models",
+    "repositories",
+    "services",
+]
+exclude = [
+    "alembic",
+    "scripts",
+    "tests",
 ]

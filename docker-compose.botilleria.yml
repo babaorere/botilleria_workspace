@@ -12,6 +12,28 @@ x-logging: &default-logging
     compress: "true"
 
 services:
+  redis:
+    image: redis:7.4-alpine
+    container_name: botilleria_redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--save", "60", "1000"]
+    volumes:
+      - botilleria_redis_data:/data
+    networks:
+      - booking-titanium-wm_default
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 64M
+
   botilleria_api:
     build:
       context: ./botilleria_core
@@ -27,6 +49,9 @@ services:
       - botilleria_venv:/app/.venv
     networks:
       - booking-titanium-wm_default
+    depends_on:
+      redis:
+        condition: service_healthy
     deploy:
       resources:
         limits:
@@ -60,6 +85,7 @@ services:
 
 volumes:
   botilleria_venv:
+  botilleria_redis_data:
 
 networks:
   booking-titanium-wm_default:
