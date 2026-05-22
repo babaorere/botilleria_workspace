@@ -1,0 +1,260 @@
+{
+  "dashboard": {
+    "id": null,
+    "title": "Botilleria Core - System Overview",
+    "timezone": "Etc/UTC",
+    "schemaVersion": 38,
+    "version": 1,
+    "refresh": "30s",
+    "panels": [
+      {
+        "type": "stat",
+        "title": "API Status",
+        "gridPos": {"x": 0, "y": 0, "w": 6, "h": 4},
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "up{job=\"botilleria_api\"}",
+            "legendFormat": "{{instance}}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "orientation": "auto",
+          "textMode": "value",
+          "colorMode": "value"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "type": "value",
+                "options": {
+                  "0": {"text": "DOWN", "color": "red"},
+                  "1": {"text": "UP", "color": "green"}
+                }
+              }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": null, "color": "red"},
+                {"value": 1, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "type": "stat",
+        "title": "Nginx Status",
+        "gridPos": {"x": 6, "y": 0, "w": 6, "h": 4},
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "up{job=\"botilleria_nginx\"}",
+            "legendFormat": "{{instance}}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "orientation": "auto",
+          "textMode": "value",
+          "colorMode": "value"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "type": "value",
+                "options": {
+                  "0": {"text": "DOWN", "color": "red"},
+                  "1": {"text": "UP", "color": "green"}
+                }
+              }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": null, "color": "red"},
+                {"value": 1, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "type": "stat",
+        "title": "Database Status",
+        "gridPos": {"x": 12, "y": 0, "w": 6, "h": 4},
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "up{job=\"postgres\"}",
+            "legendFormat": "{{instance}}",
+            "refId": "A"
+          }
+        ],
+        "options": {
+          "reduceOptions": {
+            "values": false,
+            "calcs": ["lastNotNull"],
+            "fields": ""
+          },
+          "orientation": "auto",
+          "textMode": "value",
+          "colorMode": "value"
+        },
+        "fieldConfig": {
+          "defaults": {
+            "mappings": [
+              {
+                "type": "value",
+                "options": {
+                  "0": {"text": "DOWN", "color": "red"},
+                  "1": {"text": "UP", "color": "green"}
+                }
+              }
+            ],
+            "thresholds": {
+              "mode": "absolute",
+              "steps": [
+                {"value": null, "color": "red"},
+                {"value": 1, "color": "green"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "type": "graph",
+        "title": "API Request Rate (req/sec)",
+        "gridPos": {"x": 0, "y": 4, "w": 12, "h": 6},
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{job=\"botilleria_api\"}[5m])",
+            "legendFormat": "{{method}} {{endpoint}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "reqps",
+            "decimals": 1
+          }
+        }
+      },
+      {
+        "type": "graph",
+        "title": "API Error Rate (errors/sec)",
+        "gridPos": {"x": 12, "y": 4, "w": 12, "h": 6},
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "rate(http_requests_total{job=\"botilleria_api\",status=~\"5..\"}[5m])",
+            "legendFormat": "{{instance}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "eps",
+            "decimals": 2
+          }
+        }
+      },
+      {
+        "type": "graph",
+        "title": "Response Time (seconds)",
+        "gridPos": {"x": 0, "y": 10, "w": 12, "h": 6},
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "probe_duration_seconds{job=\"botilleria_api\"}",
+            "legendFormat": "{{instance}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "decimals": 3
+          }
+        }
+      },
+      {
+        "type": "graph",
+        "title": "Database Connections",
+        "gridPos": {"x": 12, "y": 10, "w": 12, "h": 6},
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "pg_stat_activity_count{datname=\"botilleria\"}",
+            "legendFormat": "Active Connections",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "unit": "short",
+            "decimals": 0
+          }
+        }
+      },
+      {
+        "type": "table",
+        "title": "Recent Alerts",
+        "gridPos": {"x": 0, "y": 16, "w": 24, "h": 6},
+        "datasource": "Prometheus",
+        "targets": [
+          {
+            "expr": "ALERTS{alertstate=\"firing\"}",
+            "legendFormat": "{{alertname}}",
+            "refId": "A"
+          }
+        ],
+        "fieldConfig": {
+          "defaults": {
+            "custom": {}
+          },
+          "overrides": []
+        },
+        "options": {
+          "showHeader": true,
+          "sortBy": [
+            {
+              "desc": true,
+              "displayName": "State"
+            }
+          ]
+        }
+      }
+    ],
+    "templating": {
+      "list": []
+    },
+    "annotations": {
+      "list": [
+        {
+          "name": "Deployments",
+          "datasource": "-- Grafana --",
+          "enable": true,
+          "iconColor": "rgba(0, 211, 255, 1)",
+          "type": "dashboard"
+        }
+      ]
+    }
+  },
+  "overwrite": true
+}

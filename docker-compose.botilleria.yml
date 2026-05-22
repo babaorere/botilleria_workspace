@@ -1,0 +1,66 @@
+# ============================================================================
+# BOTILLERIA CORE — Docker Compose
+# ============================================================================
+# Servicio FastAPI multiusuario + PostgreSQL compartido de Windmill
+# ============================================================================
+
+x-logging: &default-logging
+  driver: "json-file"
+  options:
+    max-size: "10m"
+    max-file: "5"
+    compress: "true"
+
+services:
+  botilleria_api:
+    build:
+      context: ./botilleria_core
+      dockerfile: Dockerfile
+    container_name: botilleria_core_api
+    restart: unless-stopped
+    env_file:
+      - ./botilleria_core/.env
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./botilleria_core:/app
+      - botilleria_venv:/app/.venv
+    networks:
+      - booking-titanium-wm_default
+    deploy:
+      resources:
+        limits:
+          memory: 2048M
+        reservations:
+          memory: 1024M
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 45s
+    logging: *default-logging
+
+  # ── Init DB: crea la base de datos 'botilleria' en el PostgreSQL compartido ──
+  botilleria_init_db:
+    image: postgres:17-alpine
+    container_name: botilleria_init_db
+    restart: "no"
+    environment:
+      - PGPASSWORD=windmill
+    command: >
+      sh -c "
+      psql -h booking-titanium-wm-db-1 -U windmill -d windmill -tc \"SELECT 1 FROM pg_database WHERE datname = 'botilleria'\" | grep -q 1 ||
+      psql -h booking-titanium-wm-db-1 -U windmill -d windmill -c 'CREATE DATABASE botilleria;'
+      "
+    networks:
+      - booking-titanium-wm_default
+    depends_on:
+      - botilleria_api
+
+volumes:
+  botilleria_venv:
+
+networks:
+  booking-titanium-wm_default:
+    external: true

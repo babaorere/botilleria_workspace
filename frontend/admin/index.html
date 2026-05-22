@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Portal - Botillería</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>⚙️ Admin</h1>
+                <p class="tenant-name">Panel de Administración</p>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#dashboard" class="nav-link active" data-section="dashboard">📊 Dashboard</a>
+                <a href="#tenants" class="nav-link" data-section="tenants">🏢 Tenants</a>
+                <a href="#agent" class="nav-link" data-section="agent">🤖 Agente IA</a>
+                <a href="#settings" class="nav-link" data-section="settings">⚙️ Configuración</a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-bar">
+                <h2 id="pageTitle">Dashboard</h2>
+                <div class="top-bar-actions">
+                    <span class="status-badge">Admin</span>
+                </div>
+            </header>
+
+            <div class="content-area">
+                <!-- Dashboard Section -->
+                <section id="dashboard" class="section active">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon">🏢</div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="tenantCount">0</span>
+                                <span class="stat-label">Tenants</span>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">✅</div>
+                            <div class="stat-info">
+                                <span class="stat-value" id="activeTenantCount">0</span>
+                                <span class="stat-label">Activos</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Tenants Section -->
+                <section id="tenants" class="section">
+                    <div class="section-header">
+                        <h3>Tenants</h3>
+                        <button class="btn btn-primary" id="addTenantBtn">+ Nuevo Tenant</button>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table" id="tenantsTable">
+                            <thead>
+                                <tr>
+                                    <th>Slug</th>
+                                    <th>Nombre</th>
+                                    <th>Estado</th>
+                                    <th>Creado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tenantsBody"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Agent Configuration Section -->
+                <section id="agent" class="section">
+                    <div class="section-header">
+                        <h3>Configuración del Agente IA</h3>
+                    </div>
+                    <div class="form-card">
+                        <div class="form-group">
+                            <label for="agentTenant">Seleccionar Tenant</label>
+                            <select id="agentTenant"></select>
+                        </div>
+                        <div class="form-group">
+                            <label for="agentModel">Modelo LLM</label>
+                            <input type="text" id="agentModel" placeholder="openrouter/nvidia/nemotron-3-super-120b-a12b:free">
+                        </div>
+                        <div class="form-group">
+                            <label for="agentApiKey">API Key (OpenRouter)</label>
+                            <input type="password" id="agentApiKey" placeholder="sk-or-...">
+                        </div>
+                        <div class="form-group">
+                            <label for="agentInstruction">Instrucción del Agente (System Prompt)</label>
+                            <textarea id="agentInstruction" rows="10"></textarea>
+                        </div>
+                        <button class="btn btn-primary" id="saveAgentBtn">Guardar Configuración</button>
+                    </div>
+                </section>
+
+                <!-- Settings Section -->
+                <section id="settings" class="section">
+                    <div class="section-header">
+                        <h3>Configuración del Sistema</h3>
+                    </div>
+                    <div class="table-container">
+                        <table class="data-table" id="settingsTable">
+                            <thead>
+                                <tr>
+                                    <th>Clave</th>
+                                    <th>Valor</th>
+                                    <th>Descripción</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="settingsBody"></tbody>
+                        </table>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modalTitle">Modal</h3>
+                <button class="modal-close" id="modalClose">&times;</button>
+            </div>
+            <div class="modal-body" id="modalBody"></div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toastContainer"></div>
+
+    <script src="js/app.js"></script>
+</body>
+</html>
