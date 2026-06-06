@@ -86,8 +86,8 @@ class ChatService:
         user_id: str,
         platform: str,
         session_id: str,
-    ) -> int:
-        """Resolve the user and conversation IDs in a synchronous, thread-safe context."""
+    ) -> tuple[int, str, int]:
+        """Resolve the user and conversation info in a synchronous, thread-safe context."""
         user_svc = UserService(self.db, tenant_id)
         user = user_svc.get_or_create(
             external_id=user_id,
@@ -99,8 +99,7 @@ class ChatService:
         if not conv:
             conv = conv_svc.create_for_user(user_id=user.id, session_id=session_id)
 
-        conv_id: int = conv.id
-        return conv_id
+        return conv.id, conv.state, conv.version
 
     async def process_message(
         self,
@@ -110,14 +109,14 @@ class ChatService:
         message: str,
         session_id: str | None = None,
         rag_context: str | None = None,
-    ) -> tuple[str, str]:
+    ) -> tuple[str, str, int, str]:
         try:
             if message.strip().lower() in ["/start", "/chat"]:
                 session_id = str(uuid.uuid4())
             else:
                 session_id = session_id or str(uuid.uuid4())
 
-            conv_id = await asyncio.to_thread(
+            conv_id, state, version = await asyncio.to_thread(
                 self._resolve_user_and_conversation,
                 tenant.id,
                 user_id,
@@ -126,6 +125,27 @@ class ChatService:
             )
 
             self._schedule_save(str(tenant.id), conv_id, "user", message)
+            
+            # Anti-Ghost Clicks: Callback Versioning Pattern
+            if message.startswith("v"):
+                import re
+                match = re.match(r"^v(\d+):(.*)$", message)
+                if match:
+                    payload_version = int(match.group(1))
+                    message_action = match.group(2)
+                    if payload_version != version:
+                        logger.warning("Ghost click descartado: versión %s (actual es %s)", payload_version, version)
+                        return session_id, "Ese botón ya expiró. Por favor usa las opciones más recientes.", version, state
+                    message = message_action # Usamos la acción limpia para el LLM
+            
+            # Hybrid FSM Pattern Logic
+            if state == "ESPERANDO_HUMANO":
+                response_text = "Estamos esperando a que un humano te atienda, por favor espera un momento."
+                return session_id, response_text, version, state
+                
+            if state == "CHECKOUT_BLOQUEADO":
+                response_text = "Estamos procesando tu pago. Si deseas cancelar o volver atrás, presiona el botón correspondiente."
+                return session_id, response_text, version, state
 
             start_time = time.time()
 
@@ -147,7 +167,7 @@ class ChatService:
                 response_time_ms=latency_ms,
             )
 
-            return session_id, response_text
+            return session_id, response_text, version, state
         except Exception as e:
             logger.error(
                 "ChatService.process_message failed [tenant=%s, user=%s, session=%s]: %s",
@@ -166,14 +186,14 @@ class ChatService:
         message: str,
         session_id: str | None = None,
         rag_context: str | None = None,
-    ) -> tuple[str, AsyncGenerator[str, None]]:
+    ) -> tuple[str, AsyncGenerator[str, None], int, str]:
         try:
             if message.strip().lower() in ["/start", "/chat"]:
                 session_id = str(uuid.uuid4())
             else:
                 session_id = session_id or str(uuid.uuid4())
 
-            conv_id = await asyncio.to_thread(
+            conv_id, state, version = await asyncio.to_thread(
                 self._resolve_user_and_conversation,
                 tenant.id,
                 user_id,
@@ -182,6 +202,31 @@ class ChatService:
             )
 
             self._schedule_save(str(tenant.id), conv_id, "user", message)
+            
+            # Anti-Ghost Clicks: Callback Versioning Pattern
+            if message.startswith("v"):
+                import re
+                match = re.match(r"^v(\d+):(.*)$", message)
+                if match:
+                    payload_version = int(match.group(1))
+                    message_action = match.group(2)
+                    if payload_version != version:
+                        logger.warning("Ghost click descartado en stream: versión %s (actual es %s)", payload_version, version)
+                        async def error_stream():
+                            yield "Ese botón ya expiró. Por favor usa las opciones más recientes."
+                        return session_id, error_stream(), version, state
+                    message = message_action
+
+            # Hybrid FSM Pattern Logic
+            if state == "ESPERANDO_HUMANO":
+                async def simple_stream():
+                    yield "Estamos esperando a que un humano te atienda, por favor espera un momento."
+                return session_id, simple_stream(), version, state
+                
+            if state == "CHECKOUT_BLOQUEADO":
+                async def checkout_stream():
+                    yield "Estamos procesando tu pago. Si deseas cancelar o volver atrás, presiona el botón correspondiente."
+                return session_id, checkout_stream(), version, state
 
             start_time = time.time()
 
@@ -206,7 +251,7 @@ class ChatService:
                     response_time_ms=latency_ms,
                 )
 
-            return session_id, stream_generator()
+            return session_id, stream_generator(), version, state
         except Exception as e:
             logger.error(
                 "ChatService.process_message_stream failed [tenant=%s, user=%s, session=%s]: %s",

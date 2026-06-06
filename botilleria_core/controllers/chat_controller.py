@@ -125,7 +125,7 @@ async def chat(
 
         chat_service = ChatService(db, llm, background_tasks)
         try:
-            session_id, response_text = await chat_service.process_message(
+            session_id, response_text, version, state = await chat_service.process_message(
                 tenant=tenant,
                 user_id=request.user_id,
                 platform=request.platform,
@@ -140,7 +140,9 @@ async def chat(
             buttons = []
             def replacer(match):
                 btn_text = match.group(1).strip()
-                buttons.append(InteractiveButton(text=btn_text, payload=btn_text))
+                # Apply Titanium Booking Callback Versioning Pattern
+                versioned_payload = f"v{version}:{btn_text}"
+                buttons.append(InteractiveButton(text=btn_text, payload=versioned_payload))
                 return ""
                 
             clean_response = re.sub(r'\[BOTON:(.+?)\]', replacer, response_text)
@@ -225,7 +227,7 @@ async def chat_stream(
         rag_context = await rag_builder.build_context(request.message, top_k=5)
 
         chat_service = ChatService(db, llm, background_tasks)
-        session_id, chat_stream_gen = await chat_service.process_message_stream(
+        session_id, chat_stream_gen, version, state = await chat_service.process_message_stream(
             tenant=tenant,
             user_id=request.user_id,
             platform=request.platform,

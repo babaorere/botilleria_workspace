@@ -17,8 +17,30 @@ class Conversation(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     session_id = Column(String, unique=True, nullable=False, index=True)
     created_at = Column(DateTime, server_default=func.now())
+    state = Column(String, default="CHAT_LIBRE", nullable=False)
+    version = Column(Integer, default=0, nullable=False)
 
     user = relationship("User", backref="conversations")
     messages = relationship(
         "Message", back_populates="conversation", cascade="all, delete-orphan"
     )
+
+    def transition_to(self, new_state: str) -> None:
+        """
+        Transición controlada de la máquina de estados.
+        Incrementa la versión atómicamente para invalidar botones antiguos.
+        """
+        if self.state == new_state:
+            return
+        
+        valid_transitions = {
+            "CHAT_LIBRE": ["CHECKOUT_BLOQUEADO", "ESPERANDO_HUMANO"],
+            "CHECKOUT_BLOQUEADO": ["CHAT_LIBRE", "ESPERANDO_HUMANO"],
+            "ESPERANDO_HUMANO": ["CHAT_LIBRE"]
+        }
+        
+        if new_state not in valid_transitions.get(self.state, []):
+            raise ValueError(f"Transición de estado inválida: {self.state} -> {new_state}")
+            
+        self.state = new_state
+        self.version += 1
