@@ -6,7 +6,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
-from config.database import get_db, set_tenant_context
+from config.database import get_db, set_tenant_context, safe_transaction
 from models.tenant import Tenant
 from services import (
     TenantService,
@@ -14,6 +14,10 @@ from services import (
     ProductService,
     UserService,
     ConversationService,
+    AuthService,
+    AnalyticsService,
+    CategoryService,
+    KBCategoryService,
 )
 from dtos.request import (
     TenantProfileUpdateRequest,
@@ -22,6 +26,10 @@ from dtos.request import (
     KBEntryCreateRequest,
     KBEntryUpdateRequest,
     KBSearchRequest,
+    CategoryCreateRequest,
+    CategoryUpdateRequest,
+    KBCategoryCreateRequest,
+    KBCategoryUpdateRequest,
 )
 from dtos.response import (
     TenantProfileResponse,
@@ -30,6 +38,8 @@ from dtos.response import (
     KBSearchResponse,
     KBSearchResultItem,
     ChannelRouteResponse,
+    CategoryResponse,
+    KBCategoryResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -38,10 +48,24 @@ router = APIRouter(prefix="/tenants/me", tags=["tenant-portal"])
 
 
 def get_current_tenant(request: Request, db: Session = Depends(get_db)) -> Tenant:
+    auth_header = request.headers.get("Authorization")
+    if auth_header and auth_header.startswith("Bearer "):
+        token = auth_header.split(" ")[1]
+        payload = AuthService.decode_access_token(token)
+        if payload and payload.get("role") == "tenant":
+            tenant_service = TenantService(db)
+            tenant = tenant_service.get_tenant_by_id(uuid.UUID(payload.get("sub")))
+            if tenant:
+                return tenant
+        raise HTTPException(401, "Invalid or expired JWT token")
+
+    # Fallback for backward compatibility
     tenant_id_header = request.headers.get("X-Tenant-ID")
     if not tenant_id_header:
-        logger.warning("Missing X-Tenant-ID header on tenant portal request")
-        raise HTTPException(401, "Missing X-Tenant-ID header")
+        logger.warning(
+            "Missing Authorization or X-Tenant-ID header on tenant portal request"
+        )
+        raise HTTPException(401, "Missing Authorization or X-Tenant-ID header")
 
     try:
         tenant_id = uuid.UUID(tenant_id_header)
@@ -54,6 +78,15 @@ def get_current_tenant(request: Request, db: Session = Depends(get_db)) -> Tenan
     if not tenant:
         logger.warning("Tenant not found: %s", tenant_id)
         raise HTTPException(403, f"Tenant {tenant_id} not found or inactive")
+
+    portal_token = tenant.get_portal_token()
+    if portal_token:
+        tenant_api_key_header = request.headers.get("X-Tenant-API-Key")
+        if not tenant_api_key_header or tenant_api_key_header != portal_token:
+            logger.warning(
+                "Invalid or missing X-Tenant-API-Key header for tenant %s", tenant_id
+            )
+            raise HTTPException(403, "Invalid or missing X-Tenant-API-Key header")
 
     return tenant
 
@@ -87,7 +120,7 @@ def update_profile(
         tenant = get_current_tenant(fastapi_request, db)
         set_tenant_context(db, str(tenant.id))
 
-        with db.begin():
+        with safe_transaction(db):
             if data.name is not None:
                 tenant.name = data.name
             if data.email is not None:
@@ -180,7 +213,7 @@ def create_product(
         set_tenant_context(db, str(tenant.id))
 
         product_svc = ProductService(db, tenant.id)
-        with db.begin():
+        with safe_transaction(db):
             product = product_svc.create_product(
                 name=data.name,
                 description=data.description,
@@ -209,7 +242,7 @@ def update_product(
         set_tenant_context(db, str(tenant.id))
 
         product_svc = ProductService(db, tenant.id)
-        with db.begin():
+        with safe_transaction(db):
             product = product_svc.update_product(
                 product_id=uuid.UUID(product_id),
                 name=data.name,
@@ -238,7 +271,7 @@ def delete_product(
         set_tenant_context(db, str(tenant.id))
 
         product_svc = ProductService(db, tenant.id)
-        with db.begin():
+        with safe_transaction(db):
             deleted = product_svc.delete_product(uuid.UUID(product_id))
         if not deleted:
             raise HTTPException(404, "Product not found")
@@ -310,7 +343,7 @@ def create_kb_entry(
         set_tenant_context(db, str(tenant.id))
 
         kb_svc = KBService(db, tenant.id)
-        with db.begin():
+        with safe_transaction(db):
             entry = kb_svc.create_entry(
                 category=data.category,
                 title=data.title,
@@ -336,7 +369,7 @@ def update_kb_entry(
         set_tenant_context(db, str(tenant.id))
 
         kb_svc = KBService(db, tenant.id)
-        with db.begin():
+        with safe_transaction(db):
             entry = kb_svc.update_entry(
                 entry_id=uuid.UUID(entry_id),
                 category=data.category,
@@ -363,7 +396,7 @@ def delete_kb_entry(
         set_tenant_context(db, str(tenant.id))
 
         kb_svc = KBService(db, tenant.id)
-        with db.begin():
+        with safe_transaction(db):
             deleted = kb_svc.delete_entry(uuid.UUID(entry_id))
         if not deleted:
             raise HTTPException(404, "KB entry not found")
@@ -457,4 +490,226 @@ def get_conversation_count(
         raise
     except Exception as e:
         logger.error("get_conversation_count failed: %s", e)
+        raise
+
+
+@router.get("/analytics")
+def get_analytics(
+    db: Session = Depends(get_db),
+    fastapi_request: Request = None,
+) -> dict:
+    try:
+        tenant = get_current_tenant(fastapi_request, db)
+        set_tenant_context(db, str(tenant.id))
+
+        analytics_svc = AnalyticsService(db, tenant.id)
+        return analytics_svc.get_basic_metrics()
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("get_analytics failed: %s", e)
+        raise
+
+
+# ── Categories CRUD ──────────────────────────────────────────────────────────
+
+
+@router.get("/categories", response_model=list[CategoryResponse])
+def list_categories(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    fastapi_request: Request = None,
+) -> list[CategoryResponse]:
+    try:
+        tenant = get_current_tenant(fastapi_request, db)
+        set_tenant_context(db, str(tenant.id))
+
+        category_svc = CategoryService(db, tenant.id)
+        categories = category_svc.list_categories(skip=skip, limit=limit)
+        return [CategoryResponse.model_validate(c) for c in categories]
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("list_categories failed: %s", e)
+        raise
+
+
+@router.post("/categories", response_model=CategoryResponse)
+def create_category(
+    data: CategoryCreateRequest,
+    db: Session = Depends(get_db),
+    fastapi_request: Request = None,
+) -> CategoryResponse:
+    try:
+        tenant = get_current_tenant(fastapi_request, db)
+        set_tenant_context(db, str(tenant.id))
+
+        category_svc = CategoryService(db, tenant.id)
+        with safe_transaction(db):
+            category = category_svc.create_category(
+                name=data.name,
+                description=data.description,
+            )
+        return CategoryResponse.model_validate(category)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("create_category failed: %s", e)
+        raise
+
+
+@router.put("/categories/{category_id}", response_model=CategoryResponse)
+def update_category(
+    category_id: str,
+    data: CategoryUpdateRequest,
+    db: Session = Depends(get_db),
+    fastapi_request: Request = None,
+) -> CategoryResponse:
+    try:
+        tenant = get_current_tenant(fastapi_request, db)
+        set_tenant_context(db, str(tenant.id))
+
+        category_svc = CategoryService(db, tenant.id)
+        with safe_transaction(db):
+            category = category_svc.update_category(
+                category_id=uuid.UUID(category_id),
+                name=data.name,
+                description=data.description,
+            )
+        return CategoryResponse.model_validate(category)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("update_category failed: %s", e)
+        raise
+
+
+@router.delete("/categories/{category_id}")
+def delete_category(
+    category_id: str,
+    db: Session = Depends(get_db),
+    fastapi_request: Request = None,
+) -> dict:
+    try:
+        tenant = get_current_tenant(fastapi_request, db)
+        set_tenant_context(db, str(tenant.id))
+
+        category_svc = CategoryService(db, tenant.id)
+        with safe_transaction(db):
+            deleted = category_svc.delete_category(uuid.UUID(category_id))
+        if not deleted:
+            raise HTTPException(404, "Category not found")
+        return {"status": "deleted", "id": category_id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("delete_category failed: %s", e)
+        raise
+
+
+# ── KB Categories CRUD ────────────────────────────────────────────────────────
+
+
+@router.get("/kb-categories", response_model=list[KBCategoryResponse])
+def list_kb_categories(
+    skip: int = 0,
+    limit: int = 100,
+    db: Session = Depends(get_db),
+    fastapi_request: Request = None,
+) -> list[KBCategoryResponse]:
+    try:
+        tenant = get_current_tenant(fastapi_request, db)
+        set_tenant_context(db, str(tenant.id))
+
+        kb_category_svc = KBCategoryService(db, tenant.id)
+        categories = kb_category_svc.list_categories(skip=skip, limit=limit)
+        return [KBCategoryResponse.model_validate(c) for c in categories]
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("list_kb_categories failed: %s", e)
+        raise
+
+
+@router.post("/kb-categories", response_model=KBCategoryResponse)
+def create_kb_category(
+    data: KBCategoryCreateRequest,
+    db: Session = Depends(get_db),
+    fastapi_request: Request = None,
+) -> KBCategoryResponse:
+    try:
+        tenant = get_current_tenant(fastapi_request, db)
+        set_tenant_context(db, str(tenant.id))
+
+        kb_category_svc = KBCategoryService(db, tenant.id)
+        with safe_transaction(db):
+            category = kb_category_svc.create_category(
+                name=data.name,
+                description=data.description,
+            )
+        return KBCategoryResponse.model_validate(category)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("create_kb_category failed: %s", e)
+        raise
+
+
+@router.put("/kb-categories/{category_id}", response_model=KBCategoryResponse)
+def update_kb_category(
+    category_id: str,
+    data: KBCategoryUpdateRequest,
+    db: Session = Depends(get_db),
+    fastapi_request: Request = None,
+) -> KBCategoryResponse:
+    try:
+        tenant = get_current_tenant(fastapi_request, db)
+        set_tenant_context(db, str(tenant.id))
+
+        kb_category_svc = KBCategoryService(db, tenant.id)
+        with safe_transaction(db):
+            category = kb_category_svc.update_category(
+                category_id=uuid.UUID(category_id),
+                name=data.name,
+                description=data.description,
+            )
+        return KBCategoryResponse.model_validate(category)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("update_kb_category failed: %s", e)
+        raise
+
+
+@router.delete("/kb-categories/{category_id}")
+def delete_kb_category(
+    category_id: str,
+    db: Session = Depends(get_db),
+    fastapi_request: Request = None,
+) -> dict:
+    try:
+        tenant = get_current_tenant(fastapi_request, db)
+        set_tenant_context(db, str(tenant.id))
+
+        kb_category_svc = KBCategoryService(db, tenant.id)
+        with safe_transaction(db):
+            deleted = kb_category_svc.delete_category(uuid.UUID(category_id))
+        if not deleted:
+            raise HTTPException(404, "KB Category not found")
+        return {"status": "deleted", "id": category_id}
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("delete_kb_category failed: %s", e)
         raise

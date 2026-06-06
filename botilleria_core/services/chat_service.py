@@ -1,15 +1,20 @@
 from __future__ import annotations
 
+import asyncio
 import logging
+import time
 import uuid
 from typing import AsyncGenerator
 
+from fastapi import BackgroundTasks
 from sqlalchemy.orm import Session
 
+from config.database import SessionLocal, set_tenant_context
+from models.message import Message
 from models.tenant import Tenant
-from services.user_service import UserService
 from services.conversation_service import ConversationService
 from services.llm_service import LLMService
+from services.user_service import UserService
 
 logger = logging.getLogger(__name__)
 
@@ -19,9 +24,83 @@ class ChatService:
         self,
         db: Session,
         llm_service: LLMService,
+        background_tasks: BackgroundTasks | None = None,
     ) -> None:
         self.db = db
         self.llm_service = llm_service
+        self.background_tasks = background_tasks
+
+    @staticmethod
+    def _save_message_background(
+        tenant_id_str: str,
+        conversation_id: int,
+        role: str,
+        content: str,
+        response_time_ms: int | None = None,
+    ) -> None:
+        try:
+            with SessionLocal() as db_session:
+                set_tenant_context(db_session, tenant_id_str)
+                msg = Message(
+                    tenant_id=uuid.UUID(tenant_id_str),
+                    conversation_id=conversation_id,
+                    role=role,
+                    content=content,
+                    response_time_ms=response_time_ms,
+                )
+                db_session.add(msg)
+                db_session.commit()
+        except Exception as e:
+            logger.error("Failed to save message in background task: %s", e)
+
+    def _schedule_save(
+        self,
+        tenant_id_str: str,
+        conversation_id: int,
+        role: str,
+        content: str,
+        response_time_ms: int | None = None,
+    ) -> None:
+        if self.background_tasks:
+            self.background_tasks.add_task(
+                self._save_message_background,
+                tenant_id_str,
+                conversation_id,
+                role,
+                content,
+                response_time_ms,
+            )
+        else:
+            # Fallback to sync if no background tasks provided
+            self._save_message_background(
+                tenant_id_str,
+                conversation_id,
+                role,
+                content,
+                response_time_ms,
+            )
+
+    def _resolve_user_and_conversation(
+        self,
+        tenant_id: uuid.UUID,
+        user_id: str,
+        platform: str,
+        session_id: str,
+    ) -> int:
+        """Resolve the user and conversation IDs in a synchronous, thread-safe context."""
+        user_svc = UserService(self.db, tenant_id)
+        user = user_svc.get_or_create(
+            external_id=user_id,
+            platform=platform,
+        )
+
+        conv_svc = ConversationService(self.db, tenant_id)
+        conv = conv_svc.get_by_session_id(session_id)
+        if not conv:
+            conv = conv_svc.create_for_user(user_id=user.id, session_id=session_id)
+
+        conv_id: int = conv.id
+        return conv_id
 
     async def process_message(
         self,
@@ -33,18 +112,22 @@ class ChatService:
         rag_context: str | None = None,
     ) -> tuple[str, str]:
         try:
-            user_svc = UserService(self.db, tenant.id)
-            user = user_svc.get_or_create(
-                external_id=user_id,
-                platform=platform,
+            if message.strip().lower() in ["/start", "/chat"]:
+                session_id = str(uuid.uuid4())
+            else:
+                session_id = session_id or str(uuid.uuid4())
+
+            conv_id = await asyncio.to_thread(
+                self._resolve_user_and_conversation,
+                tenant.id,
+                user_id,
+                platform,
+                session_id,
             )
 
-            session_id = session_id or str(uuid.uuid4())
+            self._schedule_save(str(tenant.id), conv_id, "user", message)
 
-            conv_svc = ConversationService(self.db, tenant.id)
-            existing = conv_svc.get_by_session_id(session_id)
-            if not existing:
-                conv_svc.create_for_user(user_id=user.id, session_id=session_id)
+            start_time = time.time()
 
             response_text = await self.llm_service.run_chat(
                 tenant=tenant,
@@ -52,6 +135,16 @@ class ChatService:
                 session_id=session_id,
                 message=message,
                 rag_context=rag_context,
+            )
+
+            latency_ms = int((time.time() - start_time) * 1000)
+
+            self._schedule_save(
+                str(tenant.id),
+                conv_id,
+                "assistant",
+                response_text,
+                response_time_ms=latency_ms,
             )
 
             return session_id, response_text
@@ -73,29 +166,47 @@ class ChatService:
         message: str,
         session_id: str | None = None,
         rag_context: str | None = None,
-    ) -> AsyncGenerator[str, None]:
+    ) -> tuple[str, AsyncGenerator[str, None]]:
         try:
-            user_svc = UserService(self.db, tenant.id)
-            user = user_svc.get_or_create(
-                external_id=user_id,
-                platform=platform,
+            if message.strip().lower() in ["/start", "/chat"]:
+                session_id = str(uuid.uuid4())
+            else:
+                session_id = session_id or str(uuid.uuid4())
+
+            conv_id = await asyncio.to_thread(
+                self._resolve_user_and_conversation,
+                tenant.id,
+                user_id,
+                platform,
+                session_id,
             )
 
-            session_id = session_id or str(uuid.uuid4())
+            self._schedule_save(str(tenant.id), conv_id, "user", message)
 
-            conv_svc = ConversationService(self.db, tenant.id)
-            existing = conv_svc.get_by_session_id(session_id)
-            if not existing:
-                conv_svc.create_for_user(user_id=user.id, session_id=session_id)
+            start_time = time.time()
 
-            async for chunk in self.llm_service.run_chat_stream(
-                tenant=tenant,
-                user_id=user_id,
-                session_id=session_id,
-                message=message,
-                rag_context=rag_context,
-            ):
-                yield chunk
+            async def stream_generator() -> AsyncGenerator[str, None]:
+                full_response = []
+                async for chunk in self.llm_service.run_chat_stream(
+                    tenant=tenant,
+                    user_id=user_id,
+                    session_id=session_id,
+                    message=message,
+                    rag_context=rag_context,
+                ):
+                    full_response.append(chunk)
+                    yield chunk
+
+                latency_ms = int((time.time() - start_time) * 1000)
+                self._schedule_save(
+                    str(tenant.id),
+                    conv_id,
+                    "assistant",
+                    "".join(full_response),
+                    response_time_ms=latency_ms,
+                )
+
+            return session_id, stream_generator()
         except Exception as e:
             logger.error(
                 "ChatService.process_message_stream failed [tenant=%s, user=%s, session=%s]: %s",

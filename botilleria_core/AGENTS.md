@@ -20,7 +20,7 @@ LAW-07  NO SIDE-EFFECTS @ TOP LEVEL
 LAW-08  EXCEPT = LOG + RAISE → NO silent swallow
 LAW-09  ADK TOOLS: Docstrings MUST follow Google/Sphinx extended format for Function Calling
 LAW-10  LLM MODEL: LiteLlm + OpenRouter (NO Gemini directo)
-LAW-11  SESSION: InMemorySessionService (patrón wmill)
+LAW-11  SESSION: RedisSessionService in prod / InMemorySessionService fallback in dev
 LAW-12  AGENT/RUNNER: Cacheados como singleton por proceso
 
 ---
@@ -154,11 +154,11 @@ agent = Agent(
     tools=[get_current_datetime, get_botilleria_info, consultar_stock, consultar_precio, contactar_humano],
 )
 
-# InMemorySessionService (NOT DatabaseSessionService)
+# RedisSessionService (or InMemorySessionService fallback in dev)
 runner = Runner(
     agent=agent,
     app_name="botilleria_assistant",
-    session_service=InMemorySessionService(),
+    session_service=session_service,  # Created via create_session_service
     auto_create_session=True,
 )
 ```
@@ -263,6 +263,8 @@ GET http://localhost:8001/health
 | `MODEL_DISPLAY` | No | Human-readable model name |
 | `APP_ENV` | No | `development` or `production` |
 | `LOG_LEVEL` | No | `DEBUG`, `INFO`, `WARNING`, `ERROR` |
+| `ADMIN_API_KEY` | Yes (Prod) | API key for `/admin/*` endpoint security |
+| `ALLOWED_ORIGINS` | No | Comma-separated list of origins for CORS hardening (defaults to `*`) |
 
 ---
 

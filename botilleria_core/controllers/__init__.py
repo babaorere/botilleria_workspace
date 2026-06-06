@@ -4,6 +4,7 @@ from .tenant_controller import router as tenant_router
 from .user_controller import router as user_router
 from .session_controller import router as session_router
 from .tenant_portal_controller import router as tenant_portal_router
+from .auth_controller import router as auth_router
 from .admin_controller import router as admin_router
 
 __all__ = [
@@ -14,4 +15,5 @@ __all__ = [
     "session_router",
     "tenant_portal_router",
     "admin_router",
+    "auth_router",
 ]

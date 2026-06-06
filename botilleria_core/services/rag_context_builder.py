@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import logging
 
 from models.tenant import Tenant
@@ -29,7 +30,9 @@ class RAGContextBuilder:
         category: str | None = None,
     ) -> str:
         try:
-            entries = self.kb_service.search(query, top_k=top_k, category=category)
+            entries = await asyncio.to_thread(
+                self.kb_service.search, query, top_k=top_k, category=category
+            )
             if not entries:
                 return ""
 

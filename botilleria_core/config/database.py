@@ -48,6 +48,31 @@ AsyncSessionLocal = async_sessionmaker(
 Base = declarative_base()
 
 
+from typing import Any
+
+class safe_transaction:
+    def __init__(self, db: Session) -> None:
+        self.db = db
+        self.tx = None
+
+    def __enter__(self) -> safe_transaction:
+        if not self.db.in_transaction():
+            self.tx = self.db.begin()
+        return self
+
+    def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
+        if exc_type is not None:
+            if self.tx:
+                self.tx.rollback()
+            else:
+                self.db.rollback()
+        else:
+            if self.tx:
+                self.tx.commit()
+            else:
+                self.db.commit()
+
+
 def get_db() -> Session:
     db = SessionLocal()
     try:
@@ -79,7 +104,7 @@ def enable_rls_on_startup(conn: Connection) -> None:
     Habilita RLS y crea políticas de aislamiento en las tablas multi-tenant.
     Se ejecuta una vez al iniciar la aplicación.
     """
-    tables = ["users", "conversations", "messages", "knowledge_base", "products"]
+    tables = ["users", "conversations", "messages", "knowledge_base", "products", "cart_items", "categories", "kb_categories"]
 
     for table in tables:
         conn.execute(text(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY"))

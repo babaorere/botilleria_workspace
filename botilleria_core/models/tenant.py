@@ -40,6 +40,9 @@ class Tenant(Base):
     def get_api_key(self) -> str:
         return self.config.get("api_key", "")
 
+    def get_portal_token(self) -> str:
+        return self.config.get("portal_token", "")
+
     def get_products_legacy(self) -> list[dict[str, Any]]:
         return self.config.get("products", [])
 

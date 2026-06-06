@@ -18,5 +18,6 @@ class Message(Base):
     role = Column(String, nullable=False)
     content = Column(Text, nullable=False)
     created_at = Column(DateTime, server_default=func.now())
+    response_time_ms = Column(Integer, nullable=True)
 
     conversation = relationship("Conversation", back_populates="messages")

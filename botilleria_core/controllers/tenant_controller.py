@@ -6,7 +6,7 @@ import uuid
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
-from config.database import get_db
+from config.database import get_db, safe_transaction
 from services import TenantService
 from dtos.request import TenantCreateRequest, ChannelRouteCreateRequest
 from dtos.response import TenantResponse, ChannelRouteResponse
@@ -23,7 +23,7 @@ def create_tenant(
 ) -> TenantResponse:
     try:
         tenant_service = TenantService(db)
-        with db.begin():
+        with safe_transaction(db):
             tenant = tenant_service.create_tenant(
                 slug=data.slug,
                 name=data.name,
@@ -48,7 +48,7 @@ def add_channel_route(
 ) -> ChannelRouteResponse:
     try:
         tenant_service = TenantService(db)
-        with db.begin():
+        with safe_transaction(db):
             route = tenant_service.add_channel_route(
                 tenant_id=uuid.UUID(tenant_id),
                 platform=data.platform,

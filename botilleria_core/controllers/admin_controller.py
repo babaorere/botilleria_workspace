@@ -7,7 +7,8 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from config.database import get_db
+from config.database import get_db, safe_transaction
+from middleware.security import get_current_admin
 from services import TenantService
 from repositories.system_setting_repository import (
     SystemSettingRepository as SysSettingRepo,
@@ -17,7 +18,11 @@ from dtos.response import TenantResponse, ChannelRouteResponse, TenantProfileRes
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/admin", tags=["admin"])
+router = APIRouter(
+    prefix="/admin",
+    tags=["admin"],
+    dependencies=[Depends(get_current_admin)],
+)
 
 
 # ── Tenant Management ────────────────────────────────────────────────────────
@@ -45,7 +50,7 @@ def create_tenant(
 ) -> TenantResponse:
     try:
         tenant_service = TenantService(db)
-        with db.begin():
+        with safe_transaction(db):
             tenant = tenant_service.create_tenant(
                 slug=data.slug,
                 name=data.name,
@@ -92,7 +97,7 @@ def update_tenant(
         if not tenant:
             raise HTTPException(404, f"Tenant {tenant_id} not found")
 
-        with db.begin():
+        with safe_transaction(db):
             if "name" in data:
                 tenant.name = data["name"]
             if "slug" in data:
@@ -140,7 +145,7 @@ def update_tenant_status(
         if not tenant:
             raise HTTPException(404, f"Tenant {tenant_id} not found")
 
-        with db.begin():
+        with safe_transaction(db):
             tenant.status = status
             db.flush()
 
@@ -163,7 +168,7 @@ def delete_tenant(
         if not tenant:
             raise HTTPException(404, f"Tenant {tenant_id} not found")
 
-        with db.begin():
+        with safe_transaction(db):
             db.delete(tenant)
 
         return {"status": "deleted", "tenant_id": tenant_id}
@@ -214,7 +219,7 @@ def update_agent_config(
         if not tenant:
             raise HTTPException(404, f"Tenant {tenant_id} not found")
 
-        with db.begin():
+        with safe_transaction(db):
             config = tenant.config.copy()
             if "instruction" in data:
                 config["instruction"] = data["instruction"]
@@ -250,7 +255,7 @@ def add_channel_route(
 ) -> ChannelRouteResponse:
     try:
         tenant_service = TenantService(db)
-        with db.begin():
+        with safe_transaction(db):
             route = tenant_service.add_channel_route(
                 tenant_id=uuid.UUID(tenant_id),
                 platform=data.platform,
@@ -276,7 +281,7 @@ def delete_channel_route(
         if not route:
             raise HTTPException(404, "Channel route not found")
 
-        with db.begin():
+        with safe_transaction(db):
             db.delete(route)
 
         return {"status": "deleted", "route_id": route_id}
@@ -315,7 +320,7 @@ def update_setting(
 ) -> dict:
     try:
         repo = SysSettingRepo(db)
-        with db.begin():
+        with safe_transaction(db):
             setting = repo.set_value(
                 key=key,
                 value=data.get("value"),

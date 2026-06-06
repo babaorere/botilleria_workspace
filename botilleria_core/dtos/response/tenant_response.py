@@ -1,10 +1,29 @@
 from __future__ import annotations
 
+import uuid
 from pydantic import BaseModel
 
 
+class TenantResponse(BaseModel):
+    id: uuid.UUID
+    slug: str
+    name: str
+    status: str
+
+    model_config = {"from_attributes": True}
+
+
+class ChannelRouteResponse(BaseModel):
+    id: uuid.UUID
+    tenant_id: uuid.UUID
+    platform: str
+    channel_identifier: str
+
+    model_config = {"from_attributes": True}
+
+
 class TenantProfileResponse(BaseModel):
-    id: str
+    id: uuid.UUID
     slug: str
     name: str
     email: str | None
@@ -20,7 +39,7 @@ class TenantProfileResponse(BaseModel):
 
 
 class ProductResponse(BaseModel):
-    id: str
+    id: uuid.UUID
     name: str
     description: str | None
     price: float | None
@@ -32,7 +51,7 @@ class ProductResponse(BaseModel):
 
 
 class KBEntryResponse(BaseModel):
-    id: str
+    id: uuid.UUID
     category: str
     title: str
     content: str
@@ -42,7 +61,7 @@ class KBEntryResponse(BaseModel):
 
 
 class KBSearchResultItem(BaseModel):
-    id: str
+    id: uuid.UUID
     category: str
     title: str
     content: str
@@ -58,3 +77,19 @@ class KBSearchResponse(BaseModel):
 class CategoryCountResponse(BaseModel):
     category: str
     count: int
+
+
+class CategoryResponse(BaseModel):
+    id: uuid.UUID
+    name: str
+    description: str | None
+
+    model_config = {"from_attributes": True}
+
+
+class KBCategoryResponse(BaseModel):
+    id: uuid.UUID
+    name: str
+    description: str | None
+
+    model_config = {"from_attributes": True}

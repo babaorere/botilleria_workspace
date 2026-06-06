@@ -1,7 +1,7 @@
 # ============================================================================
 # BOTILLERIA CORE — Production Docker Compose
 # ============================================================================
-# Nginx (static files + reverse proxy) + FastAPI (4 workers) + PostgreSQL
+# Nginx (static + reverse proxy) + FastAPI + PostgreSQL + Redis
 # ============================================================================
 
 x-logging: &default-logging
@@ -12,6 +12,33 @@ x-logging: &default-logging
     compress: "true"
 
 services:
+  # ── PostgreSQL: Database ─────────────────────────────────────────────────
+  db:
+    image: postgres:17-alpine
+    container_name: botilleria_db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=windmill
+      - POSTGRES_PASSWORD=windmill
+      - POSTGRES_DB=botilleria
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - botilleria_net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U windmill -d botilleria"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging: *default-logging
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 128M
+
+  # ── Redis: Sessions & Cache ──────────────────────────────────────────────
   redis:
     image: redis:7.4-alpine
     container_name: botilleria_redis
@@ -40,8 +67,8 @@ services:
     container_name: botilleria_nginx
     restart: unless-stopped
     ports:
-      - "80:80"
-      - "443:443"
+      - "8080:80"
+      - "8443:443"
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - ./frontend/tenant:/usr/share/nginx/html/tenant:ro
@@ -52,6 +79,8 @@ services:
     depends_on:
       api:
         condition: service_healthy
+    networks:
+      - botilleria_net
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost/health"]
       interval: 30s
@@ -80,16 +109,17 @@ services:
       - botilleria_venv:/app/.venv
     networks:
       - botilleria_net
-      - booking-titanium-wm_default
     depends_on:
+      db:
+        condition: service_healthy
       redis:
         condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 45s
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     logging: *default-logging
     deploy:
       resources:
@@ -98,26 +128,9 @@ services:
         reservations:
           memory: 1024M
 
-  # ── Init DB: Creates 'botilleria' database if not exists ─────────────────
-  init_db:
-    image: postgres:17-alpine
-    container_name: botilleria_init_db
-    restart: "no"
-    environment:
-      - PGPASSWORD=windmill
-    command: >
-      sh -c "
-      psql -h booking-titanium-wm-db-1 -U windmill -d windmill -tc \"SELECT 1 FROM pg_database WHERE datname = 'botilleria'\" | grep -q 1 ||
-      psql -h booking-titanium-wm-db-1 -U windmill -d windmill -c 'CREATE DATABASE botilleria;'
-      "
-    networks:
-      - booking-titanium-wm_default
-    depends_on:
-      api:
-        condition: service_healthy
-
 volumes:
   botilleria_venv:
+  db_data:
   redis_data:
   nginx_cache:
   nginx_run:
@@ -125,5 +138,3 @@ volumes:
 networks:
   botilleria_net:
     driver: bridge
-  booking-titanium-wm_default:
-    external: true

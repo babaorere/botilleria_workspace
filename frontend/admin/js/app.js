@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:8001';
+const API_BASE = window.location.origin;
 
 class AdminApp {
     constructor() {

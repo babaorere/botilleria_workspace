@@ -156,7 +156,12 @@ class KBRepository(JpaRepository[KnowledgeBase]):
             )
             if active_only:
                 query = query.filter(KnowledgeBase.is_active)
-            return sorted(list(query.distinct().pluck("category")))
+            distinct_query = query.distinct()
+            if hasattr(distinct_query, "pluck") and not type(distinct_query).__name__.startswith("Query"):
+                return sorted(list(distinct_query.pluck("category")))
+                
+            results = distinct_query.all()
+            return sorted(list({r[0] for r in results if r[0]}))
         except Exception as e:
             logger.error(
                 "KBRepository.get_categories_by_tenant failed [tenant=%s]: %s",

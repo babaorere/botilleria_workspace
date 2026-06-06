@@ -13,12 +13,13 @@ from sqlalchemy.orm import Session
 from config.database import _sync_engine, Base, enable_rls_on_startup, SessionLocal
 from config.redis import create_redis_client
 from config.settings import settings
-from models import Tenant  # noqa: F401
+from models import Tenant, CartItem  # noqa: F401
 from services import (
     TenantService,
     LLMService,
     create_llm_service,
     create_session_service,
+    RateLimiter,
 )
 from exceptions import register_exception_handlers
 from middleware import RequestIdMiddleware
@@ -30,6 +31,7 @@ from controllers import (
     session_router,
     tenant_portal_router,
     admin_router,
+    auth_router,
 )
 
 logger = logging.getLogger(__name__)
@@ -103,15 +105,20 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
     session_service = create_session_service(config=settings)
     if settings.use_redis_sessions:
-        _redis_client = create_redis_client()
-        await _redis_client.ping()
-        session_service = create_session_service(
-            config=settings,
-            redis_client=_redis_client,
-        )
-        logger.info("Redis session backend initialized")
+        try:
+            _redis_client = create_redis_client()
+            await _redis_client.ping()
+            session_service = create_session_service(
+                config=settings,
+                redis_client=_redis_client,
+            )
+            logger.info("Redis session backend initialized")
+        except Exception as e:
+            logger.error("Failed to initialize Redis session backend: %s", e)
+            raise
 
     _llm_service = create_llm_service(session_service=session_service)
+    app.state.rate_limiter = RateLimiter(redis_client=_redis_client)
     logger.info(
         "LLMService initialized — worker PID=%s, model=%s, session_backend=%s",
         os.getpid(),
@@ -138,7 +145,7 @@ app.add_middleware(RequestIdMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -153,3 +160,4 @@ app.include_router(user_router)
 app.include_router(session_router)
 app.include_router(tenant_portal_router)
 app.include_router(admin_router)
+app.include_router(auth_router)

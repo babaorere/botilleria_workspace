@@ -8,6 +8,8 @@ from .tenant_response import (
     KBSearchResultItem,
     KBSearchResponse,
     CategoryCountResponse,
+    CategoryResponse,
+    KBCategoryResponse,
 )
 from .user_response import UserResponse
 from .conversation_response import ConversationResponse
@@ -23,6 +25,8 @@ __all__ = [
     "KBSearchResultItem",
     "KBSearchResponse",
     "CategoryCountResponse",
+    "CategoryResponse",
+    "KBCategoryResponse",
     "UserResponse",
     "ConversationResponse",
 ]

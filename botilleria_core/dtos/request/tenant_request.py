@@ -3,6 +3,19 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 
+class TenantCreateRequest(BaseModel):
+    slug: str = Field(..., min_length=1, max_length=50)
+    name: str = Field(..., min_length=1, max_length=100)
+    instruction: str | None = None
+    model: str | None = None
+    api_key: str | None = None
+
+
+class ChannelRouteCreateRequest(BaseModel):
+    platform: str = Field(..., min_length=1, max_length=20)
+    channel_identifier: str = Field(..., min_length=1, max_length=255)
+
+
 class TenantProfileUpdateRequest(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=100)
     email: str | None = Field(None, max_length=255)
@@ -49,3 +62,23 @@ class KBSearchRequest(BaseModel):
     query: str = Field(..., min_length=1, max_length=500)
     top_k: int = Field(default=5, ge=1, le=20)
     category: str | None = None
+
+
+class CategoryCreateRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    description: str | None = Field(None, max_length=255)
+
+
+class CategoryUpdateRequest(BaseModel):
+    name: str | None = Field(None, min_length=1, max_length=100)
+    description: str | None = Field(None, max_length=255)
+
+
+class KBCategoryCreateRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    description: str | None = Field(None, max_length=255)
+
+
+class KBCategoryUpdateRequest(BaseModel):
+    name: str | None = Field(None, min_length=1, max_length=100)
+    description: str | None = Field(None, max_length=255)

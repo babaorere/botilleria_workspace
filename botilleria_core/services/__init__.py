@@ -9,14 +9,19 @@ __all__ = [
     "ConversationService",
     "LLMService",
     "create_llm_service",
+    "AuthService",
+    "AnalyticsService",
     "ChatService",
     "KBService",
     "ProductService",
+    "CategoryService",
+    "KBCategoryService",
     "RAGContextBuilder",
     "RedisSessionService",
     "create_session_service",
     "AgentFactory",
     "transactional",
+    "RateLimiter",
 ]
 
 _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
@@ -28,9 +33,13 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     ),
     "LLMService": ("services.llm_service", "LLMService"),
     "create_llm_service": ("services.llm_service", "create_llm_service"),
+    "AuthService": ("services.auth_service", "AuthService"),
+    "AnalyticsService": ("services.analytics_service", "AnalyticsService"),
     "ChatService": ("services.chat_service", "ChatService"),
     "KBService": ("services.kb_service", "KBService"),
     "ProductService": ("services.product_service", "ProductService"),
+    "CategoryService": ("services.category_service", "CategoryService"),
+    "KBCategoryService": ("services.kb_category_service", "KBCategoryService"),
     "RAGContextBuilder": (
         "services.rag_context_builder",
         "RAGContextBuilder",
@@ -45,6 +54,7 @@ _LAZY_IMPORTS: dict[str, tuple[str, str]] = {
     ),
     "AgentFactory": ("services.agent_factory", "AgentFactory"),
     "transactional": ("services.transactional", "transactional"),
+    "RateLimiter": ("services.rate_limiter", "RateLimiter"),
 }
 
 

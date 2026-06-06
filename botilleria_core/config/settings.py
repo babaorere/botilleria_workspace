@@ -36,9 +36,16 @@ class Settings(BaseSettings):
     redis_max_connections: int = 100
     redis_retry_attempts: int = 3
 
+    # ── Security & Limits ────────────────────────────────────────
+    rate_limit_chat_max_requests: int = 10
+    rate_limit_chat_window_seconds: int = 60
+    jwt_denylist_cleanup_seconds: int = 3600
+
     # ── App ──────────────────────────────────────────────────────
     app_env: str = "development"
     log_level: str = "INFO"
+    admin_api_key: str = ""
+    allowed_origins: str = "*"
 
     @property
     def is_production(self) -> bool:
@@ -47,6 +54,14 @@ class Settings(BaseSettings):
     @property
     def use_redis_sessions(self) -> bool:
         return self.session_backend.lower() == "redis"
+
+    @property
+    def cors_origins(self) -> list[str]:
+        return [
+            origin.strip()
+            for origin in self.allowed_origins.split(",")
+            if origin.strip()
+        ]
 
 
 @lru_cache(maxsize=1)

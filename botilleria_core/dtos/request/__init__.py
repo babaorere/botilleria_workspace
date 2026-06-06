@@ -8,6 +8,10 @@ from .tenant_request import (
     KBEntryCreateRequest,
     KBEntryUpdateRequest,
     KBSearchRequest,
+    CategoryCreateRequest,
+    CategoryUpdateRequest,
+    KBCategoryCreateRequest,
+    KBCategoryUpdateRequest,
 )
 from .user_request import UserCreateRequest
 
@@ -22,4 +26,8 @@ __all__ = [
     "KBEntryUpdateRequest",
     "KBSearchRequest",
     "UserCreateRequest",
+    "CategoryCreateRequest",
+    "CategoryUpdateRequest",
+    "KBCategoryCreateRequest",
+    "KBCategoryUpdateRequest",
 ]

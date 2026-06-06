@@ -1,4 +1,4 @@
-const API_BASE = 'http://localhost:8001';
+const API_BASE = window.location.origin;
 
 class TenantApp {
     constructor() {
@@ -15,11 +15,25 @@ class TenantApp {
         this.setupNavigation();
         this.setupForms();
         this.setupModals();
+        this.setupFilters();
         await this.loadDashboard();
         await this.loadProfile();
+        await this.loadCategories();
         await this.loadProducts();
+        await this.loadKBCategories();
         await this.loadKB();
         await this.loadChannels();
+    }
+
+    setupFilters() {
+        const filterStatus = document.getElementById('filterStatus');
+        const sortProducts = document.getElementById('sortProducts');
+        if (filterStatus) {
+            filterStatus.addEventListener('change', () => this.renderProducts());
+        }
+        if (sortProducts) {
+            sortProducts.addEventListener('change', () => this.renderProducts());
+        }
     }
 
     get headers() {
@@ -90,6 +104,20 @@ class TenantApp {
             this.showProductModal();
         });
 
+        const addCategoryBtn = document.getElementById('addCategoryBtn');
+        if (addCategoryBtn) {
+            addCategoryBtn.addEventListener('click', () => {
+                this.showCategoryModal();
+            });
+        }
+
+        const addKBCategoryBtn = document.getElementById('addKBCategoryBtn');
+        if (addKBCategoryBtn) {
+            addKBCategoryBtn.addEventListener('click', () => {
+                this.showKBCategoryModal();
+            });
+        }
+
         document.getElementById('addKbBtn').addEventListener('click', () => {
             this.showKBModal();
         });
@@ -132,27 +160,85 @@ class TenantApp {
 
     async loadProducts() {
         try {
-            const products = await this.fetch('/tenants/me/products?limit=100');
-            const tbody = document.getElementById('productsBody');
-            tbody.innerHTML = '';
-            products.forEach(p => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${p.name}</td>
-                    <td>${p.category || '-'}</td>
-                    <td>${p.price ? '$' + p.price.toLocaleString() : '-'}</td>
-                    <td>${p.stock}</td>
-                    <td>${p.is_available ? '✅' : '❌'}</td>
-                    <td>
-                        <button class="btn btn-sm btn-secondary" onclick="app.editProduct('${p.id}')">Editar</button>
-                        <button class="btn btn-sm btn-danger" onclick="app.deleteProduct('${p.id}')">Eliminar</button>
-                    </td>
-                `;
-                tbody.appendChild(tr);
-            });
-            document.getElementById('productCount').textContent = products.length;
+            this.products = await this.fetch('/tenants/me/products?limit=100');
+            this.renderProducts();
         } catch (err) {
             console.error('Products load failed:', err);
+        }
+    }
+
+    renderProducts() {
+        if (!this.products) return;
+
+        // 1. Get filter values
+        const statusFilter = document.getElementById('filterStatus')?.value || 'all';
+        const sortFilter = document.getElementById('sortProducts')?.value || 'name';
+
+        // 2. Filter products
+        let filtered = [...this.products];
+        if (statusFilter === 'active') {
+            filtered = filtered.filter(p => p.is_available);
+        } else if (statusFilter === 'inactive') {
+            filtered = filtered.filter(p => !p.is_available);
+        }
+
+        // 3. Sort products
+        if (sortFilter === 'name') {
+            filtered.sort((a, b) => a.name.localeCompare(b.name));
+        } else if (sortFilter === 'category_name') {
+            filtered.sort((a, b) => {
+                const catA = a.category || '';
+                const catB = b.category || '';
+                const catCompare = catA.localeCompare(catB);
+                if (catCompare !== 0) return catCompare;
+                return a.name.localeCompare(b.name);
+            });
+        }
+
+        // 4. Render to DOM
+        const tbody = document.getElementById('productsBody');
+        tbody.innerHTML = '';
+        filtered.forEach(p => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${p.name}</td>
+                <td>${p.category || '-'}</td>
+                <td>${p.price ? '$' + p.price.toLocaleString() : '-'}</td>
+                <td>${p.stock}</td>
+                <td>
+                    <label class="status-checkbox-container">
+                        <input type="checkbox" ${p.is_available ? 'checked' : ''} onchange="app.toggleProductStatus('${p.id}', this.checked)">
+                        <span class="status-icon">${p.is_available ? '🟢' : '🔴'}</span>
+                        <span class="status-text ${p.is_available ? 'text-active' : 'text-inactive'}">${p.is_available ? 'Activo' : 'Inactivo'}</span>
+                    </label>
+                </td>
+                <td>
+                    <button class="btn btn-sm btn-secondary" onclick="app.editProduct('${p.id}')">Editar</button>
+                    <button class="btn btn-sm btn-danger" onclick="app.deleteProduct('${p.id}')">Eliminar</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+        document.getElementById('productCount').textContent = filtered.length;
+    }
+
+    async toggleProductStatus(id, isChecked) {
+        try {
+            await this.fetch(`/tenants/me/products/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify({
+                    is_available: isChecked
+                })
+            });
+            this.showToast('Estado de producto actualizado', 'success');
+            if (this.products) {
+                const product = this.products.find(p => p.id === id);
+                if (product) product.is_available = isChecked;
+                this.renderProducts();
+            }
+        } catch (err) {
+            this.showToast(err.message, 'error');
+            await this.loadProducts();
         }
     }
 
@@ -224,15 +310,25 @@ class TenantApp {
         const body = document.getElementById('modalBody');
 
         title.textContent = product ? 'Editar Producto' : 'Nuevo Producto';
+
+        let categoryOptions = '<option value="">Selecciona una categoría...</option>';
+        if (this.categories && this.categories.length > 0) {
+            const sortedCategories = [...this.categories].sort((a, b) => a.name.localeCompare(b.name));
+            sortedCategories.forEach(c => {
+                const selected = (product && product.category === c.name) ? 'selected' : '';
+                categoryOptions += `<option value="${c.name}" ${selected}>${c.name}</option>`;
+            });
+        }
+
         body.innerHTML = `
             <form id="productForm">
                 <div class="form-group">
                     <label>Nombre</label>
-                    <input type="text" id="prodName" value="${product?.name || ''}" required>
+                    <input type="text" id="prodName" value="${product?.name || ''}" required spellcheck="true">
                 </div>
                 <div class="form-group">
                     <label>Descripción</label>
-                    <textarea id="prodDesc">${product?.description || ''}</textarea>
+                    <textarea id="prodDesc" spellcheck="true">${product?.description || ''}</textarea>
                 </div>
                 <div class="form-row">
                     <div class="form-group">
@@ -246,9 +342,20 @@ class TenantApp {
                 </div>
                 <div class="form-group">
                     <label>Categoría</label>
-                    <input type="text" id="prodCategory" value="${product?.category || ''}">
+                    <select id="prodCategory" required>
+                        ${categoryOptions}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Estado</label>
+                    <div class="status-checkbox-container" style="margin-top: 0.5rem;">
+                        <input type="checkbox" id="prodAvailable" ${product ? (product.is_available ? 'checked' : '') : 'checked'} onchange="document.getElementById('modalStatusIcon').textContent = this.checked ? '🟢' : '🔴'; document.getElementById('modalStatusText').className = 'status-text ' + (this.checked ? 'text-active' : 'text-inactive'); document.getElementById('modalStatusText').textContent = this.checked ? 'Activo' : 'Inactivo';">
+                        <span class="status-icon" id="modalStatusIcon">${product ? (product.is_available ? '🟢' : '🔴') : '🟢'}</span>
+                        <span class="status-text ${product ? (product.is_available ? 'text-active' : 'text-inactive') : 'text-active'}" id="modalStatusText">${product ? (product.is_available ? 'Activo' : 'Inactivo') : 'Activo'}</span>
+                    </div>
                 </div>
                 <button type="submit" class="btn btn-primary">Guardar</button>
+                ${this.getSpellcheckWarningHTML()}
             </form>
         `;
 
@@ -260,7 +367,7 @@ class TenantApp {
                 price: parseFloat(document.getElementById('prodPrice').value) || null,
                 stock: parseInt(document.getElementById('prodStock').value) || 0,
                 category: document.getElementById('prodCategory').value || null,
-                is_available: true,
+                is_available: document.getElementById('prodAvailable').checked,
             };
             try {
                 if (product) {
@@ -280,8 +387,7 @@ class TenantApp {
     }
 
     async editProduct(id) {
-        const products = await this.fetch('/tenants/me/products?limit=100');
-        const product = products.find(p => p.id === id);
+        const product = this.products.find(p => p.id === id);
         if (product) this.showProductModal(product);
     }
 
@@ -301,22 +407,35 @@ class TenantApp {
         const title = document.getElementById('modalTitle');
         const body = document.getElementById('modalBody');
 
-        title.textContent = entry ? 'Editar Entrada KB' : 'Nueva Entrada KB';
+        title.textContent = entry ? 'Editar Respuesta Automática' : 'Nueva Respuesta Automática';
+
+        let kbCategoryOptions = '<option value="">Selecciona una categoría...</option>';
+        if (this.kbCategories && this.kbCategories.length > 0) {
+            const sortedKBCategories = [...this.kbCategories].sort((a, b) => a.name.localeCompare(b.name));
+            sortedKBCategories.forEach(c => {
+                const selected = (entry && entry.category === c.name) ? 'selected' : '';
+                kbCategoryOptions += `<option value="${c.name}" ${selected}>${c.name}</option>`;
+            });
+        }
+
         body.innerHTML = `
             <form id="kbForm">
                 <div class="form-group">
                     <label>Categoría</label>
-                    <input type="text" id="kbCategory" value="${entry?.category || ''}" required>
+                    <select id="kbCategory" required>
+                        ${kbCategoryOptions}
+                    </select>
                 </div>
                 <div class="form-group">
                     <label>Título</label>
-                    <input type="text" id="kbTitle" value="${entry?.title || ''}" required>
+                    <input type="text" id="kbTitle" value="${entry?.title || ''}" required spellcheck="true">
                 </div>
                 <div class="form-group">
                     <label>Contenido</label>
-                    <textarea id="kbContent" rows="5" required>${entry?.content || ''}</textarea>
+                    <textarea id="kbContent" rows="5" required spellcheck="true">${entry?.content || ''}</textarea>
                 </div>
                 <button type="submit" class="btn btn-primary">Guardar</button>
+                ${this.getSpellcheckWarningHTML()}
             </form>
         `;
 
@@ -333,7 +452,7 @@ class TenantApp {
                 } else {
                     await this.fetch('/tenants/me/kb', { method: 'POST', body: JSON.stringify(data) });
                 }
-                this.showToast('Entrada guardada', 'success');
+                this.showToast('Respuesta guardada', 'success');
                 modal.classList.remove('active');
                 await this.loadKB();
             } catch (err) {
@@ -351,10 +470,218 @@ class TenantApp {
     }
 
     async deleteKB(id) {
-        if (!confirm('¿Eliminar esta entrada?')) return;
+        if (!confirm('¿Eliminar esta respuesta automática?')) return;
         try {
             await this.fetch(`/tenants/me/kb/${id}`, { method: 'DELETE' });
-            this.showToast('Entrada eliminada', 'success');
+            this.showToast('Respuesta eliminada', 'success');
+            await this.loadKB();
+        } catch (err) {
+            this.showToast(err.message, 'error');
+        }
+    }
+
+    async loadCategories() {
+        try {
+            this.categories = await this.fetch('/tenants/me/categories');
+            this.renderCategories();
+        } catch (err) {
+            console.error('Categories load failed:', err);
+        }
+    }
+
+    renderCategories() {
+        if (!this.categories) return;
+        const tbody = document.getElementById('categoriesBody');
+        tbody.innerHTML = '';
+        this.categories.forEach(c => {
+            const isGeneral = c.name === 'General';
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${c.name}</td>
+                <td>${c.description || '-'}</td>
+                <td>
+                    ${isGeneral 
+                        ? `<span class="text-muted" style="font-size: 0.85rem; font-style: italic;">Sistema (Protegida)</span>`
+                        : `<button class="btn btn-sm btn-secondary" onclick="app.editCategory('${c.id}')">Editar</button>
+                           <button class="btn btn-sm btn-danger" onclick="app.deleteCategory('${c.id}')">Eliminar</button>`
+                    }
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    showCategoryModal(category = null) {
+        const modal = document.getElementById('modal');
+        const title = document.getElementById('modalTitle');
+        const body = document.getElementById('modalBody');
+
+        title.textContent = category ? 'Editar Categoría' : 'Nueva Categoría';
+        body.innerHTML = `
+            <form id="categoryForm">
+                <div class="form-group">
+                    <label>Nombre</label>
+                    <input type="text" id="catName" value="${category?.name || ''}" required placeholder="Ej. serbesas, binos, gaseosas..." spellcheck="true">
+                </div>
+                <div class="form-group">
+                    <label>Descripción</label>
+                    <textarea id="catDesc" spellcheck="true">${category?.description || ''}</textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Guardar</button>
+                ${this.getSpellcheckWarningHTML()}
+            </form>
+        `;
+
+        document.getElementById('categoryForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const originalName = document.getElementById('catName').value;
+            const data = {
+                name: originalName,
+                description: document.getElementById('catDesc').value || null,
+            };
+            try {
+                let savedCategory;
+                if (category) {
+                    savedCategory = await this.fetch(`/tenants/me/categories/${category.id}`, { method: 'PUT', body: JSON.stringify(data) });
+                } else {
+                    savedCategory = await this.fetch('/tenants/me/categories', { method: 'POST', body: JSON.stringify(data) });
+                }
+                
+                // Show spelling corrector notice if corrected
+                if (savedCategory.name !== originalName) {
+                    this.showToast(`Corrección ortográfica aplicada: "${originalName}" ➔ "${savedCategory.name}"`, 'success');
+                } else {
+                    this.showToast('Categoría guardada', 'success');
+                }
+
+                modal.classList.remove('active');
+                await this.loadCategories();
+                await this.loadProducts();
+            } catch (err) {
+                this.showToast(err.message, 'error');
+            }
+        });
+
+        modal.classList.add('active');
+    }
+
+    async editCategory(id) {
+        const category = this.categories.find(c => c.id === id);
+        if (category) this.showCategoryModal(category);
+    }
+
+    async deleteCategory(id) {
+        if (!confirm('¿Eliminar esta categoría?')) return;
+        try {
+            await this.fetch(`/tenants/me/categories/${id}`, { method: 'DELETE' });
+            this.showToast('Categoría eliminada', 'success');
+            await this.loadCategories();
+            await this.loadProducts();
+        } catch (err) {
+            this.showToast(err.message, 'error');
+        }
+    }
+
+    async loadKBCategories() {
+        try {
+            this.kbCategories = await this.fetch('/tenants/me/kb-categories');
+            this.renderKBCategories();
+        } catch (err) {
+            console.error('KB Categories load failed:', err);
+        }
+    }
+
+    renderKBCategories() {
+        if (!this.kbCategories) return;
+        
+        // Alphabetical sorting
+        const sortedKBCats = [...this.kbCategories].sort((a, b) => a.name.localeCompare(b.name));
+        
+        const tbody = document.getElementById('kbCategoriesBody');
+        tbody.innerHTML = '';
+        sortedKBCats.forEach(c => {
+            const isGeneral = c.name === 'General';
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${c.name}</td>
+                <td>${c.description || '-'}</td>
+                <td>
+                    ${isGeneral 
+                        ? `<span class="text-muted" style="font-size: 0.85rem; font-style: italic;">Sistema (Protegida)</span>`
+                        : `<button class="btn btn-sm btn-secondary" onclick="app.editKBCategory('${c.id}')">Editar</button>
+                           <button class="btn btn-sm btn-danger" onclick="app.deleteKBCategory('${c.id}')">Eliminar</button>`
+                    }
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    showKBCategoryModal(category = null) {
+        const modal = document.getElementById('modal');
+        const title = document.getElementById('modalTitle');
+        const body = document.getElementById('modalBody');
+
+        title.textContent = category ? 'Editar Categoría de Respuesta' : 'Nueva Categoría de Respuesta';
+        body.innerHTML = `
+            <form id="kbCategoryForm">
+                <div class="form-group">
+                    <label>Nombre</label>
+                    <input type="text" id="kbCatName" value="${category?.name || ''}" required placeholder="Ej. delivery, horarios, reclamos..." spellcheck="true">
+                </div>
+                <div class="form-group">
+                    <label>Descripción</label>
+                    <textarea id="kbCatDesc" spellcheck="true">${category?.description || ''}</textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Guardar</button>
+                ${this.getSpellcheckWarningHTML()}
+            </form>
+        `;
+
+        document.getElementById('kbCategoryForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const originalName = document.getElementById('kbCatName').value;
+            const data = {
+                name: originalName,
+                description: document.getElementById('kbCatDesc').value || null,
+            };
+            try {
+                let savedCategory;
+                if (category) {
+                    savedCategory = await this.fetch(`/tenants/me/kb-categories/${category.id}`, { method: 'PUT', body: JSON.stringify(data) });
+                } else {
+                    savedCategory = await this.fetch('/tenants/me/kb-categories', { method: 'POST', body: JSON.stringify(data) });
+                }
+                
+                // Show spelling corrector notice if corrected
+                if (savedCategory.name !== originalName) {
+                    this.showToast(`Corrección ortográfica aplicada: "${originalName}" ➔ "${savedCategory.name}"`, 'success');
+                } else {
+                    this.showToast('Categoría de respuesta guardada', 'success');
+                }
+
+                modal.classList.remove('active');
+                await this.loadKBCategories();
+                await this.loadKB();
+            } catch (err) {
+                this.showToast(err.message, 'error');
+            }
+        });
+
+        modal.classList.add('active');
+    }
+
+    async editKBCategory(id) {
+        const category = this.kbCategories.find(c => c.id === id);
+        if (category) this.showKBCategoryModal(category);
+    }
+
+    async deleteKBCategory(id) {
+        if (!confirm('¿Eliminar esta categoría de respuesta? Se reasignarán las respuestas asociadas a "General".')) return;
+        try {
+            await this.fetch(`/tenants/me/kb-categories/${id}`, { method: 'DELETE' });
+            this.showToast('Categoría de respuesta eliminada', 'success');
+            await this.loadKBCategories();
             await this.loadKB();
         } catch (err) {
             this.showToast(err.message, 'error');
@@ -368,6 +695,15 @@ class TenantApp {
         toast.textContent = message;
         container.appendChild(toast);
         setTimeout(() => toast.remove(), 3000);
+    }
+
+    getSpellcheckWarningHTML() {
+        // Checking browser support for the native 'spellcheck' attribute
+        const supportsSpellcheck = 'spellcheck' in document.createElement('input');
+        if (!supportsSpellcheck) {
+            return `<div class="spellcheck-warning-footer">* Sugerencia: No se detectó un corrector automático activo. Actívalo en la configuración de tu navegador.</div>`;
+        }
+        return '';
     }
 
     parseJSON(str) {
