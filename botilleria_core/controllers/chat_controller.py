@@ -134,11 +134,23 @@ async def chat(
                 rag_context=rag_context,
             )
 
+            import re
+            from dtos.response.chat_response import InteractiveButton
+
+            buttons = []
+            def replacer(match):
+                btn_text = match.group(1).strip()
+                buttons.append(InteractiveButton(text=btn_text, payload=btn_text))
+                return ""
+                
+            clean_response = re.sub(r'\[BOTON:(.+?)\]', replacer, response_text)
+
             return ChatResponse(
                 session_id=session_id,
                 user_id=request.user_id,
                 tenant_slug=tenant.slug,
-                response=response_text,
+                response=clean_response.strip(),
+                buttons=buttons if buttons else None
             )
         except LLMProviderError as e:
             request_id = (
