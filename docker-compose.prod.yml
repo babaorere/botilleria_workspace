@@ -18,9 +18,9 @@ services:
     container_name: botilleria_db
     restart: unless-stopped
     environment:
-      - POSTGRES_USER=windmill
-      - POSTGRES_PASSWORD=windmill
-      - POSTGRES_DB=botilleria
+      - POSTGRES_USER=${DB_USER:-windmill}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-windmill}
+      - POSTGRES_DB=${DB_NAME:-botilleria}
     volumes:
       - db_data:/var/lib/postgresql/data
     networks:
@@ -102,7 +102,7 @@ services:
     container_name: botilleria_api
     restart: unless-stopped
     env_file:
-      - ./botilleria_core/.env
+      - ./botilleria_core/.env.local
     expose:
       - "8000"
     volumes:

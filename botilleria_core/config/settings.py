@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     app_env: str = "development"
     log_level: str = "INFO"
     admin_api_key: str = ""
+    jwt_secret: str = ""
     allowed_origins: str = "*"
 
     @property

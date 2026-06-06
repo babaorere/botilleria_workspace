@@ -15,12 +15,11 @@ from config.settings import settings
 
 logger = logging.getLogger(__name__)
 
-# Fallback secret if not in settings, but settings should have one.
-# We'll use admin_api_key as the secret if nothing else exists,
-# but it's best to have a dedicated JWT_SECRET.
-JWT_SECRET = getattr(
-    settings, "jwt_secret", settings.admin_api_key or "super-secret-default"
-)
+# The system MUST have a dedicated JWT_SECRET for security.
+if not settings.jwt_secret:
+    logger.warning("CRITICAL: jwt_secret is not set in environment. Falling back to unsafe temporary secret.")
+
+JWT_SECRET = settings.jwt_secret or "unsafe-temporary-secret"
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION_HOURS = 24
 

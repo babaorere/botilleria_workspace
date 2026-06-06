@@ -38,20 +38,23 @@ class ChatService:
         content: str,
         response_time_ms: int | None = None,
     ) -> None:
+        db_session = SessionLocal()
         try:
-            with SessionLocal() as db_session:
-                set_tenant_context(db_session, tenant_id_str)
-                msg = Message(
-                    tenant_id=uuid.UUID(tenant_id_str),
-                    conversation_id=conversation_id,
-                    role=role,
-                    content=content,
-                    response_time_ms=response_time_ms,
-                )
-                db_session.add(msg)
-                db_session.commit()
+            set_tenant_context(db_session, tenant_id_str)
+            msg = Message(
+                tenant_id=uuid.UUID(tenant_id_str),
+                conversation_id=conversation_id,
+                role=role,
+                content=content,
+                response_time_ms=response_time_ms,
+            )
+            db_session.add(msg)
+            db_session.commit()
         except Exception as e:
+            db_session.rollback()
             logger.error("Failed to save message in background task: %s", e)
+        finally:
+            db_session.close()
 
     def _schedule_save(
         self,

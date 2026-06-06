@@ -26,16 +26,26 @@ def _to_async_url(url: str) -> str:
     return url
 
 
+# Configuraciones de pooling de base de datos
+pool_kwargs = {}
+if "postgresql" in _raw_url:
+    pool_kwargs = {
+        "pool_size": 20,
+        "max_overflow": 40,
+    }
+
 _sync_engine = create_engine(
     _to_sync_url(_raw_url),
     echo=settings.db_echo,
     pool_pre_ping=True,
+    **pool_kwargs,
 )
 
 _async_engine = create_async_engine(
     _to_async_url(_raw_url),
     echo=settings.db_echo,
     pool_pre_ping=True,
+    **pool_kwargs,
 )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_sync_engine)

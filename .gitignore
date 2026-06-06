@@ -81,6 +81,7 @@ docker-compose.override.yml
 # Ignore environment files
 .env
 .env.*
+.env.local
 # But allow example templates
 !.env.example
 !.env.production.example

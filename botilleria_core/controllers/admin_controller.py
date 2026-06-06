@@ -13,6 +13,10 @@ from services import TenantService
 from repositories.system_setting_repository import (
     SystemSettingRepository as SysSettingRepo,
 )
+from models.user import User
+from models.conversation import Conversation
+from models.knowledge_base import KnowledgeBase
+from models.product import Product
 from dtos.request import TenantCreateRequest, ChannelRouteCreateRequest
 from dtos.response import TenantResponse, ChannelRouteResponse, TenantProfileResponse
 
@@ -353,13 +357,10 @@ def get_system_metrics(
         total_products = 0
 
         for tenant in tenants:
-            total_users += (
-                tenant_service.tenant_repo.db.query(
-                    tenant_service.tenant_repo.db.query.__self__.query
-                )
-                .filter_by(tenant_id=tenant.id)
-                .count()
-            )
+            total_users += db.query(User).filter(User.tenant_id == tenant.id).count()
+            total_conversations += db.query(Conversation).filter(Conversation.tenant_id == tenant.id).count()
+            total_kb_entries += db.query(KnowledgeBase).filter(KnowledgeBase.tenant_id == tenant.id).count()
+            total_products += db.query(Product).filter(Product.tenant_id == tenant.id).count()
 
         return {
             "active_tenants": len(tenants),

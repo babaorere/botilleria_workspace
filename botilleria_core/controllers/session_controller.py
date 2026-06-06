@@ -38,12 +38,14 @@ def resolve_tenant(request: Request, db: Session):
     return tenant
 
 
+from main import get_llm_service
+
 @router.get("/sessions/{session_id}/history", response_model=list[SessionHistoryItem])
 async def get_session_history(
     session_id: str,
     user_id: str,
     db: Session = Depends(get_db),
-    llm: LLMService = Depends(lambda: None),
+    llm: LLMService = Depends(get_llm_service),
     fastapi_request: Request = None,
 ) -> list[SessionHistoryItem]:
     try:
