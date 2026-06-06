@@ -1,11 +1,97 @@
-.env
-.venv/
-.pytest_cache/
-.ruff_cache/
+# --- OS / System ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# --- IDEs / Editors ---
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.swp
+*.swo
+
+# --- Python ---
 __pycache__/
 *.py[cod]
-*.pyo
-*.pyd
+*$py.class
 *.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
 *.egg-info/
-.DS_Store
+.installed.cfg
+*.egg
+.venv/
+venv/
+ENV/
+env/
+.pytest_cache/
+.ruff_cache/
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# --- Node / JS ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Databases / Caches ---
+*.db
+*.sqlite
+*.sqlite3
+dump.rdb
+.redis/
+
+# --- Docker ---
+*.log
+logs/
+docker-compose.override.yml
+
+# --- ADK / Agent Caches ---
+.antigravitycli/
+.gemini/
+.clibrain/
+
+# --- Environment & Secrets ---
+# Ignore environment files
+.env
+.env.*
+# But allow example templates
+!.env.example
+!.env.production.example
+!.env.development.example
+!.env.staging.example
+
+# Private keys and certs
+*.pem
+*.key
+*.pub
+*.crt
+*.der
+*.pfx
+*.p12
