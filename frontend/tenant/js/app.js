@@ -27,9 +27,13 @@ class TenantApp {
 
     setupFilters() {
         const filterStatus = document.getElementById('filterStatus');
+        const filterCategory = document.getElementById('filterCategory');
         const sortProducts = document.getElementById('sortProducts');
         if (filterStatus) {
             filterStatus.addEventListener('change', () => this.renderProducts());
+        }
+        if (filterCategory) {
+            filterCategory.addEventListener('change', () => this.renderProducts());
         }
         if (sortProducts) {
             sortProducts.addEventListener('change', () => this.renderProducts());
@@ -180,6 +184,7 @@ class TenantApp {
 
         // 1. Get filter values
         const statusFilter = document.getElementById('filterStatus')?.value || 'all';
+        const categoryFilter = document.getElementById('filterCategory')?.value || 'all';
         const sortFilter = document.getElementById('sortProducts')?.value || 'name';
 
         // 2. Filter products
@@ -188,6 +193,10 @@ class TenantApp {
             filtered = filtered.filter(p => p.is_available);
         } else if (statusFilter === 'inactive') {
             filtered = filtered.filter(p => !p.is_available);
+        }
+        
+        if (categoryFilter !== 'all') {
+            filtered = filtered.filter(p => p.category === categoryFilter);
         }
 
         // 3. Sort products
@@ -499,6 +508,19 @@ class TenantApp {
 
     renderCategories() {
         if (!this.categories) return;
+        
+        // Actualizar el filtro de categorías en la tabla de productos
+        const filterCategory = document.getElementById('filterCategory');
+        if (filterCategory) {
+            const currentValue = filterCategory.value;
+            filterCategory.innerHTML = '<option value="all">Todas las categorías</option>';
+            const sortedCategories = [...this.categories].sort((a, b) => a.name.localeCompare(b.name));
+            sortedCategories.forEach(c => {
+                filterCategory.innerHTML += `<option value="${c.name}">${c.name}</option>`;
+            });
+            filterCategory.value = currentValue || 'all'; // Mantener selección si existe
+        }
+        
         const tbody = document.getElementById('categoriesBody');
         tbody.innerHTML = '';
         this.categories.forEach(c => {
