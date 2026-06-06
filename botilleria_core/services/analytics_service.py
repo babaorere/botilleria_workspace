@@ -155,3 +155,35 @@ class AnalyticsService:
                 "avg": avg_duration,
             },
         }
+
+    def get_sales_metrics(self) -> dict:
+        """Calcula métricas orientadas a negocio como Ventas Perdidas por carritos abandonados."""
+        from models.cart_item import CartItem
+        from models.product import Product
+        
+        # Consideramos carrito abandonado si tiene más de 30 minutos sin actualizarse
+        threshold_time = datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(minutes=30)
+        
+        abandoned_items = (
+            self.db.query(CartItem, Product)
+            .join(Product, CartItem.product_id == Product.id)
+            .filter(CartItem.tenant_id == self.tenant_id)
+            .filter(CartItem.updated_at < threshold_time)
+            .all()
+        )
+        
+        dinero_en_la_mesa = 0
+        total_productos_olvidados = 0
+        personas_que_huyeron = set()
+        
+        for cart_item, product in abandoned_items:
+            # Asumimos que product.price existe. Product model has 'price' Column(Float)
+            dinero_en_la_mesa += (product.price or 0) * cart_item.quantity
+            total_productos_olvidados += cart_item.quantity
+            personas_que_huyeron.add(cart_item.session_id)
+            
+        return {
+            "dinero_en_la_mesa": dinero_en_la_mesa,
+            "total_productos_olvidados": total_productos_olvidados,
+            "personas_que_huyeron": len(personas_que_huyeron),
+        }

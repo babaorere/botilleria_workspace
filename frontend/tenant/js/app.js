@@ -129,12 +129,20 @@ class TenantApp {
 
     async loadDashboard() {
         try {
-            const [users, convs] = await Promise.all([
-                this.fetch('/tenants/me/users/count'),
-                this.fetch('/tenants/me/conversations/count'),
-            ]);
-            document.getElementById('userCount').textContent = users.count;
-            document.getElementById('convCount').textContent = convs.count;
+            const analytics = await this.fetch('/tenants/me/analytics');
+            
+            // Basic
+            document.getElementById('userCount').textContent = analytics.basic.active_conversations_24h || 0;
+            document.getElementById('convCount').textContent = analytics.basic.messages_today || 0;
+            
+            // Lost Sales
+            const formatMoney = (amount) => {
+                return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(amount);
+            };
+            
+            document.getElementById('lostMoneyCount').textContent = formatMoney(analytics.lost_sales.dinero_en_la_mesa || 0);
+            document.getElementById('lostCartsCount').textContent = analytics.lost_sales.personas_que_huyeron || 0;
+            document.getElementById('lostProductsCount').textContent = analytics.lost_sales.total_productos_olvidados || 0;
         } catch (err) {
             console.error('Dashboard load failed:', err);
         }

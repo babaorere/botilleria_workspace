@@ -503,7 +503,13 @@ def get_analytics(
         set_tenant_context(db, str(tenant.id))
 
         analytics_svc = AnalyticsService(db, tenant.id)
-        return analytics_svc.get_basic_metrics()
+        basic = analytics_svc.get_basic_metrics()
+        sales = analytics_svc.get_sales_metrics()
+        
+        return {
+            "basic": basic,
+            "lost_sales": sales
+        }
     except HTTPException:
         raise
     except Exception as e:

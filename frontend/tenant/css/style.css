@@ -200,6 +200,42 @@ body {
     box-shadow: var(--shadow-lg);
 }
 
+.highlight-danger {
+    background: linear-gradient(135deg, rgba(239,68,68,0.1), rgba(239,68,68,0.05));
+    border-left: 4px solid var(--danger);
+}
+
+.highlight-warning {
+    background: linear-gradient(135deg, rgba(245,158,11,0.1), rgba(245,158,11,0.05));
+    border-left: 4px solid #f59e0b; /* Amber */
+}
+
+.dashboard-panel {
+    background: var(--surface);
+    padding: 2rem;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow);
+}
+
+.dashboard-panel h3 {
+    margin-top: 0;
+    color: var(--text-primary);
+    font-size: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.dashboard-panel p {
+    color: var(--text-secondary);
+    line-height: 1.6;
+}
+
+.mt-4 {
+    margin-top: 2rem;
+}
+
 .stat-icon {
     font-size: 2.25rem;
     background: rgba(255, 255, 255, 0.03);

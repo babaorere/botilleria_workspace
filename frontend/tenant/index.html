@@ -42,30 +42,35 @@
                             <div class="stat-icon">👥</div>
                             <div class="stat-info">
                                 <span class="stat-value" id="userCount">0</span>
-                                <span class="stat-label">Usuarios</span>
+                                <span class="stat-label">Clientes Atendidos (24h)</span>
                             </div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-icon">💬</div>
                             <div class="stat-info">
                                 <span class="stat-value" id="convCount">0</span>
-                                <span class="stat-label">Conversaciones</span>
+                                <span class="stat-label">Mensajes Hoy</span>
                             </div>
                         </div>
-                        <div class="stat-card">
-                            <div class="stat-icon">📦</div>
+                        <div class="stat-card highlight-danger">
+                            <div class="stat-icon">💸</div>
                             <div class="stat-info">
-                                <span class="stat-value" id="productCount">0</span>
-                                <span class="stat-label">Productos</span>
+                                <span class="stat-value" id="lostMoneyCount">$0</span>
+                                <span class="stat-label">Dinero dejado en la mesa</span>
                             </div>
                         </div>
-                        <div class="stat-card">
-                            <div class="stat-icon">🧠</div>
+                        <div class="stat-card highlight-warning">
+                            <div class="stat-icon">🛒</div>
                             <div class="stat-info">
-                                <span class="stat-value" id="kbCount">0</span>
-                                <span class="stat-label">KB Entradas</span>
+                                <span class="stat-value" id="lostCartsCount">0</span>
+                                <span class="stat-label">Personas que huyeron</span>
                             </div>
                         </div>
+                    </div>
+                    
+                    <div class="dashboard-panel mt-4">
+                        <h3>🚨 Atención Requerida</h3>
+                        <p>Tienes <strong id="lostProductsCount">0</strong> productos en carritos que los clientes olvidaron pagar hace más de 30 minutos. El sistema de recuperación está listo para contactarlos.</p>
                     </div>
                 </section>
 
