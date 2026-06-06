@@ -698,12 +698,7 @@ class TenantApp {
     }
 
     getSpellcheckWarningHTML() {
-        // Checking browser support for the native 'spellcheck' attribute
-        const supportsSpellcheck = 'spellcheck' in document.createElement('input');
-        if (!supportsSpellcheck) {
-            return `<div class="spellcheck-warning-footer">* Sugerencia: No se detectó un corrector automático activo. Actívalo en la configuración de tu navegador.</div>`;
-        }
-        return '';
+        return `<div class="spellcheck-warning-footer">* Sugerencia: Asegúrate de mantener activado el corrector ortográfico de tu navegador para evitar errores tipográficos.</div>`;
     }
 
     parseJSON(str) {
