@@ -6,20 +6,16 @@ route:
   group_wait: 30s
   group_interval: 5m
   repeat_interval: 3h
-  receiver: 'null'  # Default: discard alerts
+  receiver: 'telegram_alerts'
 
 receivers:
   - name: 'null'
-    # Discard all alerts by default - configure as needed
-    # For email, slack, webhook, etc.:
-    # - name: 'email'
-    #   email_configs:
-    #     - to: 'alerts@tu-dominio.com'
-    #       from: 'botilleria@tu-dominio.com'
-    #       smarthost: 'smtp.gmail.com:587'
-    #       auth_username: 'alerts@tu-dominio.com'
-    #       auth_password: '${SMTP_PASSWORD}'
-    #       send_resolved: true
+  - name: 'telegram_alerts'
+    telegram_configs:
+      - bot_token: 'TU_TELEGRAM_BOT_TOKEN_AQUI'
+        chat_id: -1001234567890 # Reemplazar con ID de grupo real
+        message: '🚨 *{{ .Status | toUpper }}* 🚨\n\n{{ range .Alerts }}{{ .Annotations.summary }}\n{{ .Annotations.description }}\n{{ end }}'
+        parse_mode: 'Markdown'
 
 inhibit_rules:
   # Suppress lower severity alerts when higher severity exists

@@ -92,7 +92,9 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     global _llm_service
     global _redis_client
 
-    Base.metadata.create_all(bind=_sync_engine)
+    # SQLAlchemy: create tables
+    # Ahora usamos Alembic para las migraciones (ver alembic_migrations/)
+    # Base.metadata.create_all(bind=_sync_engine)
     logger.info("DB tables created")
 
     with _sync_engine.begin() as conn:
