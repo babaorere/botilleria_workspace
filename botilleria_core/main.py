@@ -29,7 +29,9 @@ from controllers import (
     tenant_router,
     user_router,
     session_router,
-    tenant_portal_router,
+    tenant_config_router,
+    tenant_products_router,
+    tenant_kb_router,
     admin_router,
     auth_router,
 )
@@ -160,6 +162,8 @@ app.include_router(chat_router)
 app.include_router(tenant_router)
 app.include_router(user_router)
 app.include_router(session_router)
-app.include_router(tenant_portal_router)
+app.include_router(tenant_config_router)
+app.include_router(tenant_products_router)
+app.include_router(tenant_kb_router)
 app.include_router(admin_router)
 app.include_router(auth_router)

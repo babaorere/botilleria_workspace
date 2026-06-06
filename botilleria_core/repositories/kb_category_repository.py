@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import uuid
-
 from sqlalchemy.orm import Session
 from models.kb_category import KBCategory
+from .base import JpaRepository
 
 
-class KBCategoryRepository:
+class KBCategoryRepository(JpaRepository[KBCategory]):
     def __init__(self, db: Session) -> None:
-        self.db = db
+        super().__init__(KBCategory, db)
 
     def find_by_tenant_id(
         self,
@@ -30,11 +30,7 @@ class KBCategoryRepository:
         category_id: uuid.UUID,
         tenant_id: uuid.UUID,
     ) -> KBCategory | None:
-        return (
-            self.db.query(KBCategory)
-            .filter(KBCategory.id == category_id, KBCategory.tenant_id == tenant_id)
-            .first()
-        )
+        return self.find_one_by(id=category_id, tenant_id=tenant_id)
 
     def find_by_name_and_tenant(
         self,
@@ -46,12 +42,7 @@ class KBCategoryRepository:
             .filter(KBCategory.name.ilike(name.strip()), KBCategory.tenant_id == tenant_id)
             .first()
         )
-
-    def save(self, category: KBCategory) -> KBCategory:
-        self.db.add(category)
-        self.db.flush()
-        return category
-
+    
     def delete(self, category: KBCategory) -> None:
-        self.db.delete(category)
-        self.db.flush()
+        self.delete_by_id(category.id)
+
