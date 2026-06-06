@@ -6,19 +6,75 @@ class AdminApp {
     }
 
     async init() {
+        this.jwtToken = localStorage.getItem('admin_jwt_token');
+        if (!this.jwtToken) {
+            document.getElementById('loginModal').style.display = 'block';
+            return;
+        }
+
         this.setupNavigation();
         this.setupModals();
         this.setupAgentConfig();
-        await this.loadDashboard();
-        await this.loadTenants();
-        await this.loadSettings();
+        
+        try {
+            await this.loadDashboard();
+            await this.loadTenants();
+            await this.loadSettings();
+        } catch (e) {
+            if (e.message.includes('401')) {
+                this.logout();
+            }
+        }
+    }
+
+    async handleLogin() {
+        const usernameInput = document.getElementById('loginUsername');
+        const passwordInput = document.getElementById('loginPassword');
+        const errorEl = document.getElementById('loginError');
+        
+        const params = new URLSearchParams();
+        params.append('username', usernameInput.value.trim());
+        params.append('password', passwordInput.value.trim());
+
+        try {
+            const res = await fetch(`${API_BASE}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: params
+            });
+
+            if (!res.ok) {
+                throw new Error('Credenciales incorrectas');
+            }
+
+            const data = await res.json();
+            this.jwtToken = data.access_token;
+            localStorage.setItem('admin_jwt_token', this.jwtToken);
+            
+            document.getElementById('loginModal').style.display = 'none';
+            this.init();
+        } catch (e) {
+            errorEl.textContent = e.message;
+            errorEl.style.display = 'block';
+        }
+    }
+
+    logout() {
+        localStorage.removeItem('admin_jwt_token');
+        this.jwtToken = null;
+        window.location.reload();
     }
 
     async fetch(endpoint, options = {}) {
         const url = `${API_BASE}${endpoint}`;
+        const headers = { 'Content-Type': 'application/json', ...options.headers };
+        if (this.jwtToken) {
+            headers['Authorization'] = `Bearer ${this.jwtToken}`;
+        }
+        
         const res = await fetch(url, {
             ...options,
-            headers: { 'Content-Type': 'application/json', ...options.headers },
+            headers,
         });
         if (!res.ok) {
             const error = await res.json().catch(() => ({ error: 'Error desconocido' }));
@@ -295,4 +351,4 @@ class AdminApp {
     }
 }
 
-const app = new AdminApp();
+window.app = new AdminApp();

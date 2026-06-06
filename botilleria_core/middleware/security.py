@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import hmac
 from fastapi import Header, HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordBearer
 from config.settings import settings
@@ -43,7 +44,7 @@ async def verify_admin_key(
             detail="Missing X-Admin-API-Key header",
         )
 
-    if x_admin_api_key != settings.admin_api_key:
+    if not hmac.compare_digest(x_admin_api_key.encode("utf-8"), settings.admin_api_key.encode("utf-8")):
         logger.warning("Invalid Admin API key attempt")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

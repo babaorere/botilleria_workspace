@@ -27,9 +27,11 @@ def login(
     username = form_data.username
     password = form_data.password
 
+    import hmac
+
     # Check for Admin login
     if username == "admin":
-        if password == settings.admin_api_key:
+        if hmac.compare_digest(password.encode("utf-8"), settings.admin_api_key.encode("utf-8")):
             token = AuthService.create_access_token(
                 data={"sub": "admin", "role": "admin"}
             )
@@ -52,7 +54,8 @@ def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    if password != tenant.get_portal_token():
+    portal_token = tenant.get_portal_token() or ""
+    if not hmac.compare_digest(password.encode("utf-8"), portal_token.encode("utf-8")):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",

@@ -59,36 +59,7 @@ def get_current_tenant(request: Request, db: Session = Depends(get_db)) -> Tenan
                 return tenant
         raise HTTPException(401, "Invalid or expired JWT token")
 
-    # Fallback for backward compatibility
-    tenant_id_header = request.headers.get("X-Tenant-ID")
-    if not tenant_id_header:
-        logger.warning(
-            "Missing Authorization or X-Tenant-ID header on tenant portal request"
-        )
-        raise HTTPException(401, "Missing Authorization or X-Tenant-ID header")
-
-    try:
-        tenant_id = uuid.UUID(tenant_id_header)
-    except ValueError as e:
-        logger.warning("Invalid X-Tenant-ID format: %s — %s", tenant_id_header, e)
-        raise HTTPException(401, "Invalid X-Tenant-ID format") from e
-
-    tenant_service = TenantService(db)
-    tenant = tenant_service.get_tenant_by_id(tenant_id)
-    if not tenant:
-        logger.warning("Tenant not found: %s", tenant_id)
-        raise HTTPException(403, f"Tenant {tenant_id} not found or inactive")
-
-    portal_token = tenant.get_portal_token()
-    if portal_token:
-        tenant_api_key_header = request.headers.get("X-Tenant-API-Key")
-        if not tenant_api_key_header or tenant_api_key_header != portal_token:
-            logger.warning(
-                "Invalid or missing X-Tenant-API-Key header for tenant %s", tenant_id
-            )
-            raise HTTPException(403, "Invalid or missing X-Tenant-API-Key header")
-
-    return tenant
+    raise HTTPException(status_code=401, detail="Missing Authorization header")
 
 
 # ── Profile ──────────────────────────────────────────────────────────────────

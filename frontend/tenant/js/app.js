@@ -7,22 +7,69 @@ class TenantApp {
     }
 
     async init() {
-        if (!this.tenantId) {
-            this.tenantId = prompt('Ingresa tu Tenant ID:');
-            if (this.tenantId) localStorage.setItem('tenant_id', this.tenantId);
+        this.jwtToken = localStorage.getItem('jwt_token');
+        if (!this.jwtToken) {
+            document.getElementById('loginModal').style.display = 'block';
+            return; // Detener inicialización hasta que inicie sesión
         }
 
         this.setupNavigation();
         this.setupForms();
         this.setupModals();
         this.setupFilters();
-        await this.loadDashboard();
-        await this.loadProfile();
-        await this.loadCategories();
-        await this.loadProducts();
-        await this.loadKBCategories();
-        await this.loadKB();
-        await this.loadChannels();
+        
+        try {
+            await this.loadDashboard();
+            await this.loadProfile();
+            await this.loadCategories();
+            await this.loadProducts();
+            await this.loadKBCategories();
+            await this.loadKB();
+            await this.loadChannels();
+        } catch (e) {
+            if (e.message.includes('401')) {
+                this.logout();
+            }
+        }
+    }
+
+    async handleLogin() {
+        const usernameInput = document.getElementById('loginUsername');
+        const passwordInput = document.getElementById('loginPassword');
+        const errorEl = document.getElementById('loginError');
+        
+        const params = new URLSearchParams();
+        params.append('username', usernameInput.value.trim());
+        params.append('password', passwordInput.value.trim());
+
+        try {
+            const res = await fetch(`${API_BASE}/auth/login`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: params
+            });
+
+            if (!res.ok) {
+                throw new Error('Credenciales incorrectas');
+            }
+
+            const data = await res.json();
+            this.jwtToken = data.access_token;
+            localStorage.setItem('jwt_token', this.jwtToken);
+            
+            // Ocultar modal y arrancar app
+            document.getElementById('loginModal').style.display = 'none';
+            this.init();
+        } catch (e) {
+            errorEl.textContent = e.message;
+            errorEl.style.display = 'block';
+        }
+    }
+
+    logout() {
+        localStorage.removeItem('jwt_token');
+        this.jwtToken = null;
+        window.location.reload();
     }
 
     setupFilters() {
@@ -43,7 +90,7 @@ class TenantApp {
     get headers() {
         return {
             'Content-Type': 'application/json',
-            'X-Tenant-ID': this.tenantId,
+            'Authorization': `Bearer ${this.jwtToken}`,
         };
     }
 
@@ -740,4 +787,4 @@ class TenantApp {
     }
 }
 
-const app = new TenantApp();
+window.app = new TenantApp();
