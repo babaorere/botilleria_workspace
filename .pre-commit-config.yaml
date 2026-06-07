@@ -1,0 +1,19 @@
+# ==============================================================================
+# Pre-Commit Configuration — Botilleria Core
+# ==============================================================================
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.3
+    hooks:
+      - id: ruff
+        args: [ --fix ]
+      - id: ruff-format
+
+  - repo: local
+    hooks:
+      - id: pytest-docker
+        name: pytest-docker
+        entry: bash -c "docker cp nginx.conf botilleria_api:/nginx.conf && docker exec botilleria_api pytest"
+        language: system
+        pass_filenames: false
+        always_run: true
