@@ -12,7 +12,7 @@ from .tenant_response import (
     KBCategoryResponse,
 )
 from .user_response import UserResponse
-from .conversation_response import ConversationResponse
+from .conversation_response import ConversationResponse, MessageResponse, ConversationQueueItemResponse
 
 __all__ = [
     "ChatResponse",
@@ -29,4 +29,6 @@ __all__ = [
     "KBCategoryResponse",
     "UserResponse",
     "ConversationResponse",
+    "MessageResponse",
+    "ConversationQueueItemResponse",
 ]

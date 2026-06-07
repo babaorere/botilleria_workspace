@@ -18,8 +18,8 @@ class Settings(BaseSettings):
 
     # ── LLM (OpenRouter via LiteLlm, patrón wmill) ───────────────
     openrouter_api_key: str = ""
-    model_name: str = "openrouter/nvidia/nemotron-3-super-120b-a12b:free"
-    model_display: str = "nemotron-3-super-120b:free"
+    model_name: str = "nvidia_nim/google/gemma-4-31b-it"
+    model_display: str = "gemma-4-31b-it"
 
     # ── Session backend ──────────────────────────────────────────
     session_backend: str = "redis"

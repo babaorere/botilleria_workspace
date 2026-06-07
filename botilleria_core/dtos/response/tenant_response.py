@@ -34,6 +34,7 @@ class TenantProfileResponse(BaseModel):
     logo_url: str | None
     business_hours: dict | None
     status: str
+    human_available: bool = False
 
     model_config = {"from_attributes": True}
 

@@ -102,6 +102,7 @@ class ChatService:
         if not conv:
             conv = conv_svc.create_for_user(user_id=user.id, session_id=session_id)
 
+        self.db.commit()
         return conv.id, conv.state, conv.version
 
     async def process_message(
@@ -144,6 +145,14 @@ class ChatService:
             # Hybrid FSM Pattern Logic
             if state == "ESPERANDO_HUMANO":
                 response_text = "Estamos esperando a que un humano te atienda, por favor espera un momento."
+                return session_id, response_text, version, state
+
+            if state == "HUMANO_ATENDIENDO":
+                response_text = "Un agente humano te está atendiendo en este momento."
+                return session_id, response_text, version, state
+
+            if state == "POSPUESTA":
+                response_text = "Tu solicitud de atención humana ha sido pospuesta. Te atenderemos lo antes posible."
                 return session_id, response_text, version, state
                 
             if state == "CHECKOUT_BLOQUEADO":
@@ -225,6 +234,16 @@ class ChatService:
                 async def simple_stream():
                     yield "Estamos esperando a que un humano te atienda, por favor espera un momento."
                 return session_id, simple_stream(), version, state
+
+            if state == "HUMANO_ATENDIENDO":
+                async def human_stream():
+                    yield "Un agente humano te está atendiendo en este momento."
+                return session_id, human_stream(), version, state
+
+            if state == "POSPUESTA":
+                async def postponed_stream():
+                    yield "Tu solicitud de atención humana ha sido pospuesta. Te atenderemos lo antes posible."
+                return session_id, postponed_stream(), version, state
                 
             if state == "CHECKOUT_BLOQUEADO":
                 async def checkout_stream():

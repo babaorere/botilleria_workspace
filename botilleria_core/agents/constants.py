@@ -9,8 +9,8 @@ from typing import Final
 # Permite usar modelos free/paid sin depender de API key de Google directa
 # ============================================================================
 
-GADK_MODEL: Final[str] = "openrouter/nvidia/nemotron-3-super-120b-a12b:free"
-GADK_MODEL_DISPLAY: Final[str] = "nemotron-3-super-120b:free"
+GADK_MODEL: Final[str] = "nvidia_nim/google/gemma-4-31b-it"
+GADK_MODEL_DISPLAY: Final[str] = "gemma-4-31b-it"
 GADK_APP_NAME: Final[str] = "botilleria_assistant"
 
 # ============================================================================

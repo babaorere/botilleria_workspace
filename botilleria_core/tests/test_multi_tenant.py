@@ -47,7 +47,7 @@ TENANTS = [
             "Horario: Lunes a Viernes 09:00-21:00, Sábado 10:00-20:00. "
             "Ubicación: San Miguel, Santiago."
         ),
-        model="openrouter/nvidia/nemotron-3-super-120b-a12b:free",
+        model="nvidia_nim/google/gemma-4-31b-it",
         api_key="sk-or-test-key-1",
         channels=[
             {"platform": "telegram", "channel_identifier": "token_san_miguel"},
@@ -62,7 +62,7 @@ TENANTS = [
             "Ubicación: Providencia, Santiago. "
             "Especialidad: Vinos premium y licores importados."
         ),
-        model="openrouter/nvidia/nemotron-3-super-120b-a12b:free",
+        model="nvidia_nim/google/gemma-4-31b-it",
         api_key="sk-or-test-key-2",
         channels=[
             {"platform": "telegram", "channel_identifier": "token_providencia"},
@@ -78,7 +78,7 @@ TENANTS = [
             "Ubicación: Las Condes, Santiago. "
             "Especialidad: Vinos chilenos y argentinos."
         ),
-        model="openrouter/nvidia/nemotron-3-super-120b-a12b:free",
+        model="nvidia_nim/google/gemma-4-31b-it",
         api_key="sk-or-test-key-3",
         channels=[
             {"platform": "web", "channel_identifier": "vinoslascondes.cl"},

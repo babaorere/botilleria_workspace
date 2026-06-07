@@ -36,11 +36,16 @@ class Conversation(Base):
         valid_transitions = {
             "CHAT_LIBRE": ["CHECKOUT_BLOQUEADO", "ESPERANDO_HUMANO"],
             "CHECKOUT_BLOQUEADO": ["CHAT_LIBRE", "ESPERANDO_HUMANO"],
-            "ESPERANDO_HUMANO": ["CHAT_LIBRE"]
+            "ESPERANDO_HUMANO": ["HUMANO_ATENDIENDO", "POSPUESTA", "CANCELADA", "CHAT_LIBRE"],
+            "HUMANO_ATENDIENDO": ["CHAT_LIBRE", "POSPUESTA", "CANCELADA", "ESPERANDO_HUMANO"],
+            "POSPUESTA": ["HUMANO_ATENDIENDO", "CHAT_LIBRE", "CANCELADA", "ESPERANDO_HUMANO"],
+            "CANCELADA": ["ESPERANDO_HUMANO", "CHAT_LIBRE", "HUMANO_ATENDIENDO"],
         }
         
         if new_state not in valid_transitions.get(self.state, []):
             raise ValueError(f"Transición de estado inválida: {self.state} -> {new_state}")
             
         self.state = new_state
+        if self.version is None:
+            self.version = 0
         self.version += 1

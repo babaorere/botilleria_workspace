@@ -17,6 +17,8 @@ class TenantApp {
         this.setupForms();
         this.setupModals();
         this.setupFilters();
+        this.setupHumanToggle();
+        this.setupQueueFilters();
         
         try {
             await this.loadDashboard();
@@ -26,6 +28,7 @@ class TenantApp {
             await this.loadKBCategories();
             await this.loadKB();
             await this.loadChannels();
+            await this.loadQueue();
         } catch (e) {
             if (e.message.includes('401')) {
                 this.logout();
@@ -119,6 +122,10 @@ class TenantApp {
                 if (section) section.classList.add('active');
 
                 document.getElementById('pageTitle').textContent = link.textContent.trim();
+
+                if (link.dataset.section === 'queue') {
+                    this.loadQueue();
+                }
             });
         });
     }
@@ -212,8 +219,233 @@ class TenantApp {
             document.getElementById('profileLogo').value = profile.logo_url || '';
             document.getElementById('profileHours').value = profile.business_hours ? JSON.stringify(profile.business_hours, null, 2) : '';
             document.getElementById('statusBadge').textContent = profile.status === 'active' ? 'Activo' : 'Inactivo';
+            
+            const toggle = document.getElementById('humanAvailableToggle');
+            if (toggle) {
+                toggle.checked = !!profile.human_available;
+            }
         } catch (err) {
             console.error('Profile load failed:', err);
+        }
+    }
+
+    setupHumanToggle() {
+        const toggle = document.getElementById('humanAvailableToggle');
+        if (toggle) {
+            toggle.addEventListener('change', async () => {
+                try {
+                    await this.fetch('/tenants/me/profile', {
+                        method: 'PUT',
+                        body: JSON.stringify({
+                            human_available: toggle.checked
+                        })
+                    });
+                    this.showToast(`Disponibilidad humana: ${toggle.checked ? 'Activa' : 'Inactiva'}`, 'success');
+                } catch (err) {
+                    this.showToast(err.message, 'error');
+                    toggle.checked = !toggle.checked;
+                }
+            });
+        }
+    }
+
+    setupQueueFilters() {
+        const filterState = document.getElementById('queueFilterState');
+        const queueSort = document.getElementById('queueSort');
+        const queueSearch = document.getElementById('queueSearch');
+
+        if (filterState) filterState.addEventListener('change', () => this.loadQueue());
+        if (queueSort) queueSort.addEventListener('change', () => this.loadQueue());
+        if (queueSearch) {
+            let timeout = null;
+            queueSearch.addEventListener('input', () => {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => this.loadQueue(), 300);
+            });
+        }
+    }
+
+    async loadQueue() {
+        const stateFilter = document.getElementById('queueFilterState');
+        const queueSort = document.getElementById('queueSort');
+        const queueSearch = document.getElementById('queueSearch');
+        if (!stateFilter || !queueSort || !queueSearch) return;
+
+        const stateVal = stateFilter.value;
+        const sortVal = queueSort.value;
+        const searchVal = queueSearch.value;
+
+        const [sortBy, sortOrder] = sortVal.split('-');
+
+        let url = `/tenants/me/conversations?state=${stateVal}&sort_by=${sortBy}&sort_order=${sortOrder}`;
+        if (searchVal) {
+            url += `&search=${encodeURIComponent(searchVal)}`;
+        }
+
+        try {
+            const queueItems = await this.fetch(url);
+            this.renderQueue(queueItems);
+        } catch (err) {
+            console.error('Queue load failed:', err);
+            this.showToast('Error al cargar la cola: ' + err.message, 'error');
+        }
+    }
+
+    renderQueue(items) {
+        const tbody = document.getElementById('queueBody');
+        if (!tbody) return;
+
+        if (items.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">No hay solicitudes en la cola.</td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = '';
+        items.forEach(item => {
+            const reqTime = new Date(item.created_at);
+            const now = new Date();
+            const diffMs = now - reqTime;
+            const diffMins = Math.floor(diffMs / 60000);
+            const waitTimeStr = diffMins > 0 ? `${diffMins} min` : 'Menos de 1 min';
+
+            let badgeClass = 'badge-secondary';
+            let badgeLabel = item.state;
+            if (item.state === 'ESPERANDO_HUMANO') {
+                badgeClass = 'badge-warning';
+                badgeLabel = 'En Espera ⏳';
+            } else if (item.state === 'HUMANO_ATENDIENDO') {
+                badgeClass = 'badge-success';
+                badgeLabel = 'Atendiendo 💁';
+            } else if (item.state === 'POSPUESTA') {
+                badgeClass = 'badge-info';
+                badgeLabel = 'Pospuesta 😴';
+            } else if (item.state === 'CANCELADA') {
+                badgeClass = 'badge-danger';
+                badgeLabel = 'Cancelada ❌';
+            } else if (item.state === 'CHAT_LIBRE') {
+                badgeClass = 'badge-primary';
+                badgeLabel = 'Bot 🤖';
+            }
+
+            let actionsHtml = `
+                <button type="button" class="btn btn-secondary btn-sm" onclick="window.app.showChatPreview('${item.session_id}')" style="margin-right: 5px; padding: 4px 8px; font-size: 12px; background: transparent; border: 1px solid var(--border);">👁️ Ver Chat</button>
+            `;
+
+            if (item.state === 'ESPERANDO_HUMANO') {
+                actionsHtml += `
+                    <button type="button" class="btn btn-primary btn-sm" onclick="window.app.updateQueueState('${item.session_id}', 'HUMANO_ATENDIENDO')" style="margin-right: 5px; padding: 4px 8px; font-size: 12px; background: var(--success); border-color: var(--success); color: white;">💁 Atender</button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="window.app.updateQueueState('${item.session_id}', 'POSPUESTA')" style="margin-right: 5px; padding: 4px 8px; font-size: 12px; background: var(--secondary); border-color: var(--secondary); color: white;">😴 Posponer</button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="window.app.updateQueueState('${item.session_id}', 'CANCELADA')" style="padding: 4px 8px; font-size: 12px; background: var(--danger); border-color: var(--danger); color: white;">❌ Cancelar</button>
+                `;
+            } else if (item.state === 'HUMANO_ATENDIENDO') {
+                actionsHtml += `
+                    <button type="button" class="btn btn-primary btn-sm" onclick="window.app.updateQueueState('${item.session_id}', 'CHAT_LIBRE')" style="margin-right: 5px; padding: 4px 8px; font-size: 12px; background: var(--primary); border-color: var(--primary); color: white;">🤖 Devolver al Bot</button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="window.app.updateQueueState('${item.session_id}', 'POSPUESTA')" style="margin-right: 5px; padding: 4px 8px; font-size: 12px; background: var(--secondary); border-color: var(--secondary); color: white;">😴 Posponer</button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="window.app.updateQueueState('${item.session_id}', 'CANCELADA')" style="padding: 4px 8px; font-size: 12px; background: var(--danger); border-color: var(--danger); color: white;">❌ Cancelar</button>
+                `;
+            } else if (item.state === 'POSPUESTA') {
+                actionsHtml += `
+                    <button type="button" class="btn btn-primary btn-sm" onclick="window.app.updateQueueState('${item.session_id}', 'HUMANO_ATENDIENDO')" style="margin-right: 5px; padding: 4px 8px; font-size: 12px; background: var(--success); border-color: var(--success); color: white;">💁 Atender</button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="window.app.updateQueueState('${item.session_id}', 'CHAT_LIBRE')" style="margin-right: 5px; padding: 4px 8px; font-size: 12px; background: var(--primary); border-color: var(--primary); color: white;">🤖 Devolver al Bot</button>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="window.app.updateQueueState('${item.session_id}', 'CANCELADA')" style="padding: 4px 8px; font-size: 12px; background: var(--danger); border-color: var(--danger); color: white;">❌ Cancelar</button>
+                `;
+            } else {
+                actionsHtml += `
+                    <button type="button" class="btn btn-primary btn-sm" onclick="window.app.updateQueueState('${item.session_id}', 'ESPERANDO_HUMANO')" style="padding: 4px 8px; font-size: 12px; background: var(--primary); border-color: var(--primary); color: white;">⏳ Reabrir en Espera</button>
+                `;
+            }
+
+            const clientName = item.user_display_name || item.user_external_id;
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>${clientName}</strong></td>
+                <td><span style="text-transform: capitalize;">${item.user_platform}</span></td>
+                <td>${waitTimeStr}</td>
+                <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${item.last_message || ''}">
+                    ${item.last_message || '<em style="color:var(--text-muted);">Sin mensajes</em>'}
+                </td>
+                <td><span class="badge ${badgeClass}">${badgeLabel}</span></td>
+                <td>${actionsHtml}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    async updateQueueState(sessionId, newState) {
+        try {
+            await this.fetch(`/tenants/me/conversations/${sessionId}/state`, {
+                method: 'PUT',
+                body: JSON.stringify({ state: newState })
+            });
+            this.showToast('Estado de cola actualizado', 'success');
+            await this.loadQueue();
+        } catch (err) {
+            console.error('Failed to update queue state:', err);
+            this.showToast('Error al actualizar estado: ' + err.message, 'error');
+        }
+    }
+
+    async showChatPreview(sessionId) {
+        try {
+            const messages = await this.fetch(`/tenants/me/conversations/${sessionId}/messages`);
+            
+            let chatHtml = `
+                <div class="chat-preview-container" style="display: flex; flex-direction: column; max-height: 450px; min-height: 300px; background: #131316; border-radius: 8px; border: 1px solid var(--border); overflow: hidden; margin-top: 10px;">
+                    <div class="chat-preview-header" style="padding: 10px 15px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 13px; font-weight: 500; color: var(--text-muted); display: flex; justify-content: space-between; align-items: center;">
+                        <span>Historial de Conversación</span>
+                        <span style="font-family: monospace; font-size: 11px;">Sesión: ${sessionId.substring(0, 8)}...</span>
+                    </div>
+                    <div class="chat-preview-messages" style="flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; background: #0c0c0e;">
+            `;
+
+            if (messages.length === 0) {
+                chatHtml += `
+                    <div style="text-align: center; color: var(--text-muted); margin: auto;">No hay mensajes registrados.</div>
+                `;
+            } else {
+                messages.forEach(m => {
+                    const isUser = m.role === 'user';
+                    const bubbleBg = isUser ? 'var(--primary-gradient)' : 'var(--surface)';
+                    const bubbleColor = isUser ? '#ffffff' : 'var(--text)';
+                    const align = isUser ? 'flex-end' : 'flex-start';
+                    const timeStr = new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    
+                    chatHtml += `
+                        <div class="chat-msg" style="align-self: ${align}; max-width: 80%; display: flex; flex-direction: column; align-items: ${align};">
+                            <div class="chat-bubble" style="background: ${bubbleBg}; color: ${bubbleColor}; padding: 10px 14px; border-radius: 12px; font-size: 14px; box-shadow: var(--shadow); line-height: 1.4; word-break: break-word;">
+                                ${m.content}
+                            </div>
+                            <span style="font-size: 10px; color: var(--text-muted); margin-top: 3px;">${timeStr}</span>
+                        </div>
+                    `;
+                });
+            }
+
+            chatHtml += `
+                    </div>
+                </div>
+            `;
+
+            this.showCustomModal('Previsualizar Chat', chatHtml);
+        } catch (err) {
+            console.error('Failed to load chat history:', err);
+            this.showToast('Error al cargar historial: ' + err.message, 'error');
+        }
+    }
+
+    showCustomModal(titleText, bodyHtml) {
+        const modal = document.getElementById('modal');
+        const title = document.getElementById('modalTitle');
+        const body = document.getElementById('modalBody');
+        if (modal && title && body) {
+            title.textContent = titleText;
+            body.innerHTML = bodyHtml;
+            modal.classList.add('active');
         }
     }
 

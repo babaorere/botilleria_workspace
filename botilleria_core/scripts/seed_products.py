@@ -61,8 +61,8 @@ def seed() -> None:
                         "de entrega (Retiro o Despacho). Luego llama al tool confirmar_pedido.\n"
                         "5. Nunca inventes información de catálogo o precios."
                     ),
-                    "model": "openrouter/nvidia/nemotron-3-super-120b-a12b:free",
-                    "api_key": os.getenv("OPENROUTER_API_KEY", ""),
+                    "model": "nvidia_nim/google/gemma-4-31b-it",
+                    "api_key": os.getenv("NVIDIA_API_KEY", "") or os.getenv("OPENROUTER_API_KEY", ""),
                     "telegram_bot_token": os.getenv("TELEGRAM_BOT_TOKEN", ""),
                     "telegram_chat_id": os.getenv("TELEGRAM_CHAT_ID", ""),
                 },

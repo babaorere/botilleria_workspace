@@ -111,9 +111,10 @@ def test_chat_endpoint_rate_limit_integration() -> None:
     mock_limiter.is_rate_limited.return_value = True
 
     # Override the rate limiter dependency
-    from controllers.chat_controller import get_rate_limiter
+    from controllers.chat_controller import get_rate_limiter, get_llm_service
 
     app.dependency_overrides[get_rate_limiter] = lambda: mock_limiter
+    app.dependency_overrides[get_llm_service] = lambda: MagicMock()
 
     # Setup database tenant resolver mock
     mock_tenant = MagicMock()
@@ -211,9 +212,9 @@ async def test_async_thread_delegation_in_chat_service() -> None:
     tenant = MagicMock()
     tenant.id = uuid.uuid4()
 
-    # Mock _resolve_user_and_conversation to return 123, avoiding real DB queries
-    with patch.object(service, "_resolve_user_and_conversation", return_value=123):
-        with patch("asyncio.to_thread", AsyncMock(return_value=123)) as mock_to_thread:
+    # Mock _resolve_user_and_conversation to return a 3-tuple, avoiding real DB queries
+    with patch.object(service, "_resolve_user_and_conversation", return_value=(123, "NUEVO", 1)):
+        with patch("asyncio.to_thread", AsyncMock(return_value=(123, "NUEVO", 1))) as mock_to_thread:
             # Act
             await service.process_message(
                 tenant=tenant,

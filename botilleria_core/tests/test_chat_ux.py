@@ -53,7 +53,7 @@ async def test_chat_service_reset_session_on_start_command(
 
     original_session_id = str(uuid.uuid4())
 
-    new_session_id, response = await chat_svc.process_message(
+    new_session_id, response, version, state = await chat_svc.process_message(
         tenant=mock_tenant,
         user_id="user123",
         platform="telegram",
@@ -75,7 +75,7 @@ async def test_chat_service_keeps_session_on_normal_message(
 
     original_session_id = str(uuid.uuid4())
 
-    returned_session_id, response = await chat_svc.process_message(
+    returned_session_id, response, version, state = await chat_svc.process_message(
         tenant=mock_tenant,
         user_id="user123",
         platform="telegram",
@@ -144,7 +144,7 @@ async def test_chat_stream_controller_empathetic_error_fallback(mock_db, mock_te
 
     mock_chat_svc = MagicMock()
     mock_chat_svc.process_message_stream = AsyncMock(
-        return_value=(req.session_id, failing_stream_generator())
+        return_value=(req.session_id, failing_stream_generator(), 1, "NUEVO")
     )
 
     fastapi_req = MagicMock()

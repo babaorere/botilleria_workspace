@@ -16,6 +16,7 @@
             </div>
             <nav class="sidebar-nav">
                 <a href="#dashboard" class="nav-link active" data-section="dashboard" title="Mira de un vistazo cómo van tus ventas y si tienes clientes pendientes de compra">📊 Dashboard</a>
+                <a href="#queue" class="nav-link" data-section="queue" title="Gestiona los clientes que esperan o están siendo atendidos por un humano">📞 Cola de Atención</a>
                 <a href="#profile" class="nav-link" data-section="profile" title="Modifica el nombre, dirección y horarios de tu botillería">🏪 Perfil</a>
                 <a href="#products" class="nav-link" data-section="products" title="Agrega cervezas, destilados, snacks y actualiza sus precios o stock">📦 Productos</a>
                 <a href="#categories" class="nav-link" data-section="categories" title="Ordena tus productos en grupos (Ej: Piscos, Vinos, Bebidas)">🗂️ Categorías de Productos</a>
@@ -32,7 +33,14 @@
         <main class="main-content">
             <header class="top-bar">
                 <h2 id="pageTitle">Dashboard</h2>
-                <div class="top-bar-actions">
+                <div class="top-bar-actions" style="display: flex; align-items: center; gap: 20px;">
+                    <div class="human-available-toggle" style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 14px; font-weight: 500; color: var(--text-muted);">💁 Humano Disponible:</span>
+                        <label class="switch">
+                            <input type="checkbox" id="humanAvailableToggle">
+                            <span class="slider round"></span>
+                        </label>
+                    </div>
                     <span class="status-badge" id="statusBadge">Activo</span>
                 </div>
             </header>
@@ -74,6 +82,64 @@
                     <div class="dashboard-panel mt-4">
                         <h3>🚨 Atención Requerida</h3>
                         <p>Tienes <strong id="lostProductsCount">0</strong> productos en carritos que los clientes olvidaron pagar hace más de 30 minutos. El sistema de recuperación está listo para contactarlos.</p>
+                    </div>
+                </section>
+
+                <!-- Queue Section -->
+                <section id="queue" class="section">
+                    <div class="section-header">
+                        <h3>Cola de Atención Humana</h3>
+                        <div style="display: flex; gap: 10px;">
+                            <button type="button" class="btn btn-secondary" onclick="window.app.loadQueue()">🔄 Actualizar Cola</button>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <div class="table-filters" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px; align-items: end;">
+                            <div class="filter-group">
+                                <label for="queueFilterState" style="display: block; margin-bottom: 5px; font-weight: 500; font-size: 13px;">Filtrar por Estado:</label>
+                                <select id="queueFilterState" style="width: 100%; padding: 8px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); color: var(--text);">
+                                    <option value="all_human">Todos los pendientes (Espera, Atendiendo, Pospuesta)</option>
+                                    <option value="all">Todas las conversaciones (Historial Completo)</option>
+                                    <option value="ESPERANDO_HUMANO">En Espera ⏳</option>
+                                    <option value="HUMANO_ATENDIENDO">Atendiendo 💁</option>
+                                    <option value="POSPUESTA">Pospuesta 😴</option>
+                                    <option value="CANCELADA">Cancelada ❌</option>
+                                    <option value="CHAT_LIBRE">Chat Libre (Bot) 🤖</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label for="queueSort" style="display: block; margin-bottom: 5px; font-weight: 500; font-size: 13px;">Ordenar por:</label>
+                                <select id="queueSort" style="width: 100%; padding: 8px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); color: var(--text);">
+                                    <option value="created_at-asc">Tiempo de llegada (Antiguos primero) ⏳</option>
+                                    <option value="created_at-desc">Tiempo de llegada (Nuevos primero) ⚡</option>
+                                    <option value="user_name-asc">Nombre del Cliente (A-Z) 🔠</option>
+                                    <option value="user_name-desc">Nombre del Cliente (Z-A) 🔠</option>
+                                </select>
+                            </div>
+                            <div class="filter-group">
+                                <label for="queueSearch" style="display: block; margin-bottom: 5px; font-weight: 500; font-size: 13px;">Buscar por Nombre/Teléfono:</label>
+                                <input type="text" id="queueSearch" placeholder="Escribe para buscar..." style="width: 100%; padding: 8px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); color: var(--text);">
+                            </div>
+                        </div>
+
+                        <table class="data-table" id="queueTable">
+                            <thead>
+                                <tr>
+                                    <th>Cliente</th>
+                                    <th>Plataforma</th>
+                                    <th>Solicitado hace</th>
+                                    <th>Último Mensaje</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="queueBody">
+                                <tr>
+                                    <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 20px;">Cargando cola de atención...</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </div>
                 </section>
 

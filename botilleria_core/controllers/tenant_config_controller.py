@@ -92,6 +92,10 @@ def update_profile(
                 tenant.logo_url = data.logo_url
             if data.business_hours is not None:
                 tenant.business_hours = data.business_hours
+            if data.human_available is not None:
+                tenant.config["human_available"] = data.human_available
+                from sqlalchemy.orm.attributes import flag_modified
+                flag_modified(tenant, "config")
 
             db.flush()
             db.refresh(tenant)
@@ -196,6 +200,145 @@ def get_analytics(
 
 
 # ── Categories CRUD ──────────────────────────────────────────────────────────
+
+
+from dtos.response.conversation_response import ConversationQueueItemResponse, MessageResponse
+from pydantic import BaseModel
+
+class ConversationStateUpdateRequest(BaseModel):
+    state: str
+
+@router.get("/conversations", response_model=list[ConversationQueueItemResponse])
+def get_conversations(
+    state: str = Query("all_human"),
+    search: Optional[str] = Query(None),
+    sort_by: str = Query("created_at"),
+    sort_order: str = Query("asc"),
+    db: Session = Depends(get_db),
+    fastapi_request: Request = None,
+) -> list[ConversationQueueItemResponse]:
+    try:
+        tenant = get_current_tenant(fastapi_request, db)
+        set_tenant_context(db, str(tenant.id))
+
+        from models.conversation import Conversation
+        from models.user import User
+        from models.message import Message
+        from sqlalchemy import or_
+
+        query = db.query(Conversation).filter(Conversation.tenant_id == tenant.id)
+        query = query.join(User, Conversation.user_id == User.id)
+
+        if state == "all_human":
+            query = query.filter(Conversation.state.in_(["ESPERANDO_HUMANO", "HUMANO_ATENDIENDO", "POSPUESTA", "CANCELADA"]))
+        elif state and state != "all":
+            query = query.filter(Conversation.state == state)
+
+        if search:
+            search_term = f"%{search.strip()}%"
+            query = query.filter(or_(
+                User.display_name.ilike(search_term),
+                User.external_id.ilike(search_term)
+            ))
+
+        if sort_by == "user_name":
+            if sort_order == "desc":
+                query = query.order_by(User.display_name.desc())
+            else:
+                query = query.order_by(User.display_name.asc())
+        else:  # default to arrival time (created_at)
+            if sort_order == "desc":
+                query = query.order_by(Conversation.created_at.desc())
+            else:
+                query = query.order_by(Conversation.created_at.asc())
+
+        conversations = query.all()
+        result = []
+        for conv in conversations:
+            # Get last message
+            last_msg = db.query(Message).filter(Message.conversation_id == conv.id).order_by(Message.created_at.desc()).first()
+            result.append(ConversationQueueItemResponse(
+                id=conv.id,
+                session_id=conv.session_id,
+                state=conv.state,
+                version=conv.version,
+                created_at=conv.created_at,
+                user_id=conv.user_id,
+                user_external_id=conv.user.external_id,
+                user_display_name=conv.user.display_name,
+                user_platform=conv.user.platform,
+                last_message=last_msg.content if last_msg else None,
+                last_message_time=last_msg.created_at if last_msg else None
+            ))
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("get_conversations failed: %s", e)
+        raise
+
+@router.put("/conversations/{session_id}/state")
+def update_conversation_state(
+    session_id: str,
+    data: ConversationStateUpdateRequest,
+    db: Session = Depends(get_db),
+    fastapi_request: Request = None,
+):
+    try:
+        tenant = get_current_tenant(fastapi_request, db)
+        set_tenant_context(db, str(tenant.id))
+
+        from models.conversation import Conversation
+        conv = db.query(Conversation).filter(
+            Conversation.session_id == session_id,
+            Conversation.tenant_id == tenant.id
+        ).first()
+
+        if not conv:
+            raise HTTPException(404, "Conversation not found")
+
+        try:
+            conv.transition_to(data.state)
+            db.flush()
+            db.commit()
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+
+        return {"status": "success", "state": conv.state}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("update_conversation_state failed: %s", e)
+        raise
+
+@router.get("/conversations/{session_id}/messages", response_model=list[MessageResponse])
+def get_conversation_messages(
+    session_id: str,
+    db: Session = Depends(get_db),
+    fastapi_request: Request = None,
+) -> list[MessageResponse]:
+    try:
+        tenant = get_current_tenant(fastapi_request, db)
+        set_tenant_context(db, str(tenant.id))
+
+        from models.conversation import Conversation
+        from models.message import Message
+
+        conv = db.query(Conversation).filter(
+            Conversation.session_id == session_id,
+            Conversation.tenant_id == tenant.id
+        ).first()
+
+        if not conv:
+            raise HTTPException(404, "Conversation not found")
+
+        messages = db.query(Message).filter(Message.conversation_id == conv.id).order_by(Message.created_at.asc()).all()
+        return [MessageResponse.model_validate(m) for m in messages]
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("get_conversation_messages failed: %s", e)
+        raise
 
 
 

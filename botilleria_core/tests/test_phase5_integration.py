@@ -68,7 +68,7 @@ def tenant_id_2():
 def mock_tenant_1(tenant_id_1):
     config = {
         "instruction": "Eres el asistente de San Miguel.",
-        "model": "openrouter/nvidia/nemotron-3-super-120b-a12b:free",
+        "model": "nvidia_nim/google/gemma-4-31b-it",
         "api_key": "sk-test-key-1",
     }
 
@@ -91,7 +91,7 @@ def mock_tenant_1(tenant_id_1):
 
     def get_model():
         return tenant.config.get(
-            "model", "openrouter/nvidia/nemotron-3-super-120b-a12b:free"
+            "model", "nvidia_nim/google/gemma-4-31b-it"
         )
 
     def get_api_key():
@@ -119,7 +119,7 @@ def mock_tenant_1(tenant_id_1):
 def mock_tenant_2(tenant_id_2):
     config = {
         "instruction": "Eres el asistente de Providencia.",
-        "model": "openrouter/nvidia/nemotron-3-super-120b-a12b:free",
+        "model": "nvidia_nim/google/gemma-4-31b-it",
         "api_key": "sk-test-key-2",
     }
 
@@ -142,7 +142,7 @@ def mock_tenant_2(tenant_id_2):
 
     def get_model():
         return tenant.config.get(
-            "model", "openrouter/nvidia/nemotron-3-super-120b-a12b:free"
+            "model", "nvidia_nim/google/gemma-4-31b-it"
         )
 
     def get_api_key():
@@ -571,7 +571,7 @@ class TestTenantProfile:
     def test_tenant_getters(self, mock_tenant_1):
         """Getters de config deben retornar valores correctos."""
         assert mock_tenant_1.get_instruction() == "Eres el asistente de San Miguel."
-        assert "nemotron" in mock_tenant_1.get_model()
+        assert "gemma" in mock_tenant_1.get_model()
         assert mock_tenant_1.get_api_key() == "sk-test-key-1"
 
 

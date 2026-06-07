@@ -25,6 +25,7 @@ class TenantProfileUpdateRequest(BaseModel):
     website: str | None = Field(None, max_length=255)
     logo_url: str | None = Field(None, max_length=500)
     business_hours: dict | None = None
+    human_available: bool | None = None
 
 
 class ProductCreateRequest(BaseModel):

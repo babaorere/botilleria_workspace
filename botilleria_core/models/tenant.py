@@ -32,9 +32,13 @@ class Tenant(Base):
     def get_instruction(self) -> str:
         return self.config.get("instruction", "")
 
+    @property
+    def human_available(self) -> bool:
+        return self.config.get("human_available", False)
+
     def get_model(self) -> str:
         return self.config.get(
-            "model", "openrouter/nvidia/nemotron-3-super-120b-a12b:free"
+            "model", "nvidia_nim/google/gemma-4-31b-it"
         )
 
     def get_api_key(self) -> str:

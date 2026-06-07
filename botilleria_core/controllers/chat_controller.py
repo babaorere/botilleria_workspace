@@ -27,6 +27,11 @@ def get_rate_limiter(request: Request) -> RateLimiter:
     return request.app.state.rate_limiter
 
 
+def get_llm_service() -> LLMService:
+    from main import get_llm_service as get_llm
+    return get_llm()
+
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -84,7 +89,7 @@ async def chat(
     request: ChatRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    llm: LLMService = Depends(lambda: None),
+    llm: LLMService = Depends(get_llm_service),
     fastapi_request: Request = None,
     rate_limiter: RateLimiter = Depends(get_rate_limiter),
 ) -> ChatResponse:
@@ -187,7 +192,7 @@ async def chat_stream(
     request: ChatRequest,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    llm: LLMService = Depends(lambda: None),
+    llm: LLMService = Depends(get_llm_service),
     fastapi_request: Request = None,
     rate_limiter: RateLimiter = Depends(get_rate_limiter),
 ) -> EventSourceResponse:
@@ -267,3 +272,22 @@ async def chat_stream(
         )
         logger.error("Chat stream endpoint failed [request_id=%s]: %s", request_id, e)
         raise
+
+
+@router.post("/conversations/{session_id}/cancel")
+def cancel_human_request(
+    session_id: str,
+    db: Session = Depends(get_db)
+):
+    from models import Conversation
+    conv = db.query(Conversation).filter(Conversation.session_id == session_id).first()
+    if not conv:
+        raise HTTPException(404, "Conversation not found")
+    
+    try:
+        conv.transition_to("CHAT_LIBRE")
+        db.commit()
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    
+    return {"status": "success", "state": conv.state}

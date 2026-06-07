@@ -76,8 +76,8 @@ def seed_default_tenant(db: Session) -> None:
                 "4. Si el usuario pide algo fuera de scope, ofrece contactar a un humano.\n"
                 "5. Responde en español siempre."
             ),
-            "model": "openrouter/nvidia/nemotron-3-super-120b-a12b:free",
-            "api_key": os.getenv("OPENROUTER_API_KEY", ""),
+            "model": "nvidia_nim/google/gemma-4-31b-it",
+            "api_key": os.getenv("NVIDIA_API_KEY", "") or os.getenv("OPENROUTER_API_KEY", ""),
             "products": [],
         },
     )
