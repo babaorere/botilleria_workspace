@@ -65,13 +65,15 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    env:
+      VPS_HOST: ${{ secrets.VPS_HOST }}
 
     steps:
       - uses: actions/checkout@v4
-        if: ${{ secrets.VPS_HOST != '' }}
+        if: env.VPS_HOST != ''
 
       - name: Deploy to VPS
-        if: ${{ secrets.VPS_HOST != '' }}
+        if: env.VPS_HOST != ''
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
