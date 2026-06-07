@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from typing import Any
 
 from sqlalchemy import create_engine, text, Connection
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -57,8 +58,6 @@ AsyncSessionLocal = async_sessionmaker(
 
 Base = declarative_base()
 
-
-from typing import Any
 
 class safe_transaction:
     def __init__(self, db: Session) -> None:

@@ -8,7 +8,6 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config.database import SessionLocal
 from models.cart_item import CartItem
-from models.conversation import Conversation
 from models.tenant import Tenant
 
 logging.basicConfig(level=logging.INFO)

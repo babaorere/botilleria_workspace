@@ -38,8 +38,9 @@ def resolve_tenant(request: Request, db: Session):
     return tenant
 
 
-def __get_llm():
-    from main import get_llm_service
+def __get_llm() -> LLMService:
+    from main import get_llm_service  # noqa: E402
+
     return get_llm_service()
 @router.get("/sessions/{session_id}/history", response_model=list[SessionHistoryItem])
 async def get_session_history(
