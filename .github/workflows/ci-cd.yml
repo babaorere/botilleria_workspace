@@ -64,12 +64,14 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && secrets.VPS_HOST != ''
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
       - uses: actions/checkout@v4
+        if: ${{ secrets.VPS_HOST != '' }}
 
       - name: Deploy to VPS
+        if: ${{ secrets.VPS_HOST != '' }}
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VPS_HOST }}
