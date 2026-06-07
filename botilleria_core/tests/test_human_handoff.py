@@ -1,6 +1,6 @@
 import uuid
 import pytest
-from unittest.mock import MagicMock, AsyncMock, patch
+from unittest.mock import MagicMock, patch
 from models.conversation import Conversation
 from services.chat_service import ChatService
 

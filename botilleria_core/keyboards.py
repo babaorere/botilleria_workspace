@@ -5,10 +5,9 @@ Provides ReplyKeyboardMarkup (persistent) and InlineKeyboardMarkup (ephemeral) k
 from __future__ import annotations
 
 from telegram import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
-from typing import List, Optional
+from typing import List
 
 from botilleria_core.config.database import SessionLocal
-from botilleria_core.config.settings import settings
 from botilleria_core.models import Tenant
 
 

@@ -1,46 +1,26 @@
 from __future__ import annotations
 
 import logging
-import uuid
 from typing import Optional
+from pydantic import BaseModel
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from config.database import get_db, set_tenant_context, safe_transaction
-from models.tenant import Tenant
+from dtos.response.conversation_response import ConversationQueueItemResponse, MessageResponse
 from services import (
     TenantService,
-    KBService,
-    ProductService,
     UserService,
     ConversationService,
-    AuthService,
     AnalyticsService,
-    CategoryService,
-    KBCategoryService,
 )
 from dtos.request import (
     TenantProfileUpdateRequest,
-    ProductCreateRequest,
-    ProductUpdateRequest,
-    KBEntryCreateRequest,
-    KBEntryUpdateRequest,
-    KBSearchRequest,
-    CategoryCreateRequest,
-    CategoryUpdateRequest,
-    KBCategoryCreateRequest,
-    KBCategoryUpdateRequest,
 )
 from dtos.response import (
     TenantProfileResponse,
-    ProductResponse,
-    KBEntryResponse,
-    KBSearchResponse,
-    KBSearchResultItem,
     ChannelRouteResponse,
-    CategoryResponse,
-    KBCategoryResponse,
 )
 from controllers.dependencies import get_current_tenant
 
@@ -201,9 +181,6 @@ def get_analytics(
 
 # ── Categories CRUD ──────────────────────────────────────────────────────────
 
-
-from dtos.response.conversation_response import ConversationQueueItemResponse, MessageResponse
-from pydantic import BaseModel
 
 class ConversationStateUpdateRequest(BaseModel):
     state: str

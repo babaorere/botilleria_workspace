@@ -1,12 +1,11 @@
 import sys
-import os
 import requests
 import uuid
 import time
 
 # We can query the database directly in the script since it runs inside the container
 from config.database import SessionLocal
-from models import CartItem, Conversation, Message, Product
+from models import CartItem, Conversation, Message
 
 TENANT_ID = "e82fe25b-10c8-42c9-91f4-c97264cb09d0"
 BASE_URL = "http://localhost:8000"

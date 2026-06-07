@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from redis.asyncio import Redis
 from sqlalchemy.orm import Session
 
-from config.database import _sync_engine, Base, enable_rls_on_startup, SessionLocal
+from config.database import _sync_engine, enable_rls_on_startup, SessionLocal
 from config.redis import create_redis_client
 from config.settings import settings
 from models import Tenant, CartItem  # noqa: F401

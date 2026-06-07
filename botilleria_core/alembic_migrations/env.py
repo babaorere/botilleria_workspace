@@ -1,3 +1,4 @@
+# ruff: noqa: E402
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config
@@ -24,7 +25,6 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 
 from config.database import Base
 from config.settings import settings
-import models  # Asegurar que se cargan todos los modelos
 
 target_metadata = Base.metadata
 

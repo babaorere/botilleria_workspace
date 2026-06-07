@@ -1,4 +1,3 @@
-import os
 import re
 
 source = "/home/manager/Sync/python_proyects/botilleria_workspace/botilleria_core/controllers/tenant_portal_controller.py"

@@ -2,44 +2,26 @@ from __future__ import annotations
 
 import logging
 import uuid
-from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from config.database import get_db, set_tenant_context, safe_transaction
-from models.tenant import Tenant
 from services import (
-    TenantService,
     KBService,
-    ProductService,
-    UserService,
-    ConversationService,
-    AuthService,
-    AnalyticsService,
-    CategoryService,
     KBCategoryService,
 )
 from dtos.request import (
-    TenantProfileUpdateRequest,
-    ProductCreateRequest,
-    ProductUpdateRequest,
     KBEntryCreateRequest,
     KBEntryUpdateRequest,
     KBSearchRequest,
-    CategoryCreateRequest,
-    CategoryUpdateRequest,
     KBCategoryCreateRequest,
     KBCategoryUpdateRequest,
 )
 from dtos.response import (
-    TenantProfileResponse,
-    ProductResponse,
     KBEntryResponse,
     KBSearchResponse,
     KBSearchResultItem,
-    ChannelRouteResponse,
-    CategoryResponse,
     KBCategoryResponse,
 )
 from controllers.dependencies import get_current_tenant

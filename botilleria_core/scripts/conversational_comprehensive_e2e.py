@@ -1,12 +1,11 @@
 import sys
-import os
 import requests
 import uuid
 import time
 
 # Direct DB queries for assertions (runs inside the docker container)
 from config.database import SessionLocal
-from models import CartItem, Conversation, Message, Product
+from models import CartItem
 
 TENANT_ID = "e82fe25b-10c8-42c9-91f4-c97264cb09d0"
 BASE_URL = "http://localhost:8000"

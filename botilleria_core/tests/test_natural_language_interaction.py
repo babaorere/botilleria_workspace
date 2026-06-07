@@ -7,7 +7,7 @@ import pytest
 
 from services.chat_service import ChatService
 from services.spell_corrector import BotilleriaSpellCorrector, KBSpellCorrector
-from controllers.chat_controller import chat, chat_stream
+from controllers.chat_controller import chat
 from dtos.request import ChatRequest
 from exceptions.llm_exceptions import LLMProviderError
 
