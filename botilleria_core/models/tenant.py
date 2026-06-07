@@ -30,20 +30,20 @@ class Tenant(Base):
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
 
     def get_instruction(self) -> str:
-        return self.config.get("instruction", "")
+        return self.config.get("instruction") or ""
 
     @property
     def human_available(self) -> bool:
-        return self.config.get("human_available", False)
+        return self.config.get("human_available") or False
 
     def get_model(self) -> str:
-        return self.config.get("model", "nvidia_nim/google/gemma-4-31b-it")
+        return self.config.get("model") or "nvidia_nim/google/gemma-4-31b-it"
 
     def get_api_key(self) -> str:
-        return self.config.get("api_key", "")
+        return self.config.get("api_key") or ""
 
     def get_portal_token(self) -> str:
-        return self.config.get("portal_token", "")
+        return self.config.get("portal_token") or ""
 
     def get_products_legacy(self) -> list[dict[str, Any]]:
         return self.config.get("products", [])
