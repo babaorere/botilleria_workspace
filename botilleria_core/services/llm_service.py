@@ -42,11 +42,13 @@ class LLMService:
                 )
 
             from agents.root_agent import BOTILLERIA_TOOLS
+            from agents import GADK_INSTRUCTION
 
+            instruction = tenant.get_instruction() or GADK_INSTRUCTION
             agent = Agent(
                 name=f"{tenant.slug}_{int(time.time())}",
                 model=LiteLlm(model=tenant.get_model(), api_key=api_key),
-                instruction=tenant.get_instruction(),
+                instruction=instruction,
                 tools=BOTILLERIA_TOOLS,
             )
 
