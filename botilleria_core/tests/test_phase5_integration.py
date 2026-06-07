@@ -36,9 +36,17 @@ if find_spec("google.adk") is None:
 # FIXTURES
 # ============================================================================
 
-WORKSPACE_DIR = os.path.dirname(
-    os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-)
+
+def _find_workspace_dir():
+    current = os.path.abspath(__file__)
+    for _ in range(5):
+        current = os.path.dirname(current)
+        if os.path.exists(os.path.join(current, "nginx.conf")):
+            return current
+    return os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
+WORKSPACE_DIR = _find_workspace_dir()
 
 
 @pytest.fixture

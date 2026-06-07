@@ -79,6 +79,7 @@ def seed_default_tenant(db: Session) -> None:
             "model": "nvidia_nim/google/gemma-4-31b-it",
             "api_key": os.getenv("NVIDIA_API_KEY", "")
             or os.getenv("OPENROUTER_API_KEY", ""),
+            "portal_token": os.getenv("TENANT_PORTAL_TOKEN", "el_buen_trago_token"),
             "products": [],
         },
     )
