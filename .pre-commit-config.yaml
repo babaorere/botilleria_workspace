@@ -13,7 +13,7 @@ repos:
     hooks:
       - id: pytest-docker
         name: pytest-docker
-        entry: bash -c "docker cp nginx.conf botilleria_api:/nginx.conf && docker exec botilleria_api pytest"
+        entry: bash -c "CONTAINER=\$(docker ps --format '{{.Names}}' | grep -E 'botilleria_(core_)?api' | head -n 1); if [ -n '\$CONTAINER' ]; then docker cp nginx.conf \$CONTAINER:/nginx.conf && docker exec \$CONTAINER pytest; else echo 'No running container found. Please run ./up.sh -dev first.' && exit 1; fi"
         language: system
         pass_filenames: false
         always_run: true
