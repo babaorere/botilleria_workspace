@@ -113,7 +113,16 @@ def enable_rls_on_startup(conn: Connection) -> None:
     Habilita RLS y crea políticas de aislamiento en las tablas multi-tenant.
     Se ejecuta una vez al iniciar la aplicación.
     """
-    tables = ["users", "conversations", "messages", "knowledge_base", "products", "cart_items", "categories", "kb_categories"]
+    tables = [
+        "users",
+        "conversations",
+        "messages",
+        "knowledge_base",
+        "products",
+        "cart_items",
+        "categories",
+        "kb_categories",
+    ]
 
     for table in tables:
         conn.execute(text(f"ALTER TABLE {table} ENABLE ROW LEVEL SECURITY"))

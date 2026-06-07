@@ -29,6 +29,7 @@ def get_rate_limiter(request: Request) -> RateLimiter:
 
 def get_llm_service() -> LLMService:
     from main import get_llm_service as get_llm
+
     return get_llm()
 
 
@@ -130,7 +131,12 @@ async def chat(
 
         chat_service = ChatService(db, llm, background_tasks)
         try:
-            session_id, response_text, version, state = await chat_service.process_message(
+            (
+                session_id,
+                response_text,
+                version,
+                state,
+            ) = await chat_service.process_message(
                 tenant=tenant,
                 user_id=request.user_id,
                 platform=request.platform,
@@ -143,21 +149,24 @@ async def chat(
             from dtos.response.chat_response import InteractiveButton
 
             buttons = []
+
             def replacer(match):
                 btn_text = match.group(1).strip()
                 # Apply Titanium Booking Callback Versioning Pattern
                 versioned_payload = f"v{version}:{btn_text}"
-                buttons.append(InteractiveButton(text=btn_text, payload=versioned_payload))
+                buttons.append(
+                    InteractiveButton(text=btn_text, payload=versioned_payload)
+                )
                 return ""
-                
-            clean_response = re.sub(r'\[BOTON:(.+?)\]', replacer, response_text)
+
+            clean_response = re.sub(r"\[BOTON:(.+?)\]", replacer, response_text)
 
             return ChatResponse(
                 session_id=session_id,
                 user_id=request.user_id,
                 tenant_slug=tenant.slug,
                 response=clean_response.strip(),
-                buttons=buttons if buttons else None
+                buttons=buttons if buttons else None,
             )
         except LLMProviderError as e:
             request_id = (
@@ -232,7 +241,12 @@ async def chat_stream(
         rag_context = await rag_builder.build_context(request.message, top_k=5)
 
         chat_service = ChatService(db, llm, background_tasks)
-        session_id, chat_stream_gen, version, state = await chat_service.process_message_stream(
+        (
+            session_id,
+            chat_stream_gen,
+            version,
+            state,
+        ) = await chat_service.process_message_stream(
             tenant=tenant,
             user_id=request.user_id,
             platform=request.platform,
@@ -275,19 +289,17 @@ async def chat_stream(
 
 
 @router.post("/conversations/{session_id}/cancel")
-def cancel_human_request(
-    session_id: str,
-    db: Session = Depends(get_db)
-):
+def cancel_human_request(session_id: str, db: Session = Depends(get_db)):
     from models import Conversation
+
     conv = db.query(Conversation).filter(Conversation.session_id == session_id).first()
     if not conv:
         raise HTTPException(404, "Conversation not found")
-    
+
     try:
         conv.transition_to("CHAT_LIBRE")
         db.commit()
     except ValueError as e:
         raise HTTPException(400, str(e))
-    
+
     return {"status": "success", "state": conv.state}

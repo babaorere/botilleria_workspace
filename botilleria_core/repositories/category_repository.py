@@ -42,7 +42,6 @@ class CategoryRepository(JpaRepository[Category]):
             .filter(Category.name.ilike(name.strip()), Category.tenant_id == tenant_id)
             .first()
         )
-    
+
     def delete(self, category: Category) -> None:
         self.delete_by_id(category.id)
-

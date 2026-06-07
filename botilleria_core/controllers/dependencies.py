@@ -12,6 +12,7 @@ from services import TenantService, AuthService
 
 logger = logging.getLogger(__name__)
 
+
 def get_current_tenant(request: Request, db: Session = Depends(get_db)) -> Tenant:
     auth_header = request.headers.get("Authorization")
     if auth_header and auth_header.startswith("Bearer "):

@@ -68,12 +68,17 @@ def get_botilleria_info(query: str | None = None) -> str:
         with SessionLocal() as db:
             set_tenant_context(db, str(tenant_id))
             from models import Tenant
+
             tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
             if not tenant:
                 return "Botillería no encontrada."
-            
+
             hours_display = tenant.get_business_hours_display()
-            address_str = f"{tenant.address}, {tenant.city}" if tenant.address else "Ubicación física no registrada"
+            address_str = (
+                f"{tenant.address}, {tenant.city}"
+                if tenant.address
+                else "Ubicación física no registrada"
+            )
             return (
                 f"{tenant.name}\n"
                 f"Horarios de Atención: {hours_display}\n"
@@ -116,7 +121,9 @@ def listar_categorias() -> str:
             lines = ["Aquí tienes nuestras categorías de productos disponibles:"]
             for idx, cat in enumerate(categories, 1):
                 lines.append(f"{idx}. 📦 {cat}")
-            lines.append("\nIndícame cuál categoría te gustaría explorar (ej: 'muéstrame las cervezas').")
+            lines.append(
+                "\nIndícame cuál categoría te gustaría explorar (ej: 'muéstrame las cervezas')."
+            )
             return "\n".join(lines)
     except Exception as e:
         logger.error("Error in listar_categorias: %s", e)
@@ -150,13 +157,17 @@ def listar_productos_de_categoria(categoria: str) -> str:
                 .all()
             )
             if not products:
-                return f"No encontré productos disponibles en la categoría '{categoria}'."
+                return (
+                    f"No encontré productos disponibles en la categoría '{categoria}'."
+                )
 
             lines = [f"Productos en la categoría *{categoria.title()}*:"]
             for p in products:
                 desc = f" ({p.description})" if p.description else ""
                 stock_str = f"Stock: {p.stock} un." if p.stock > 0 else "Sin stock"
-                lines.append(f"• *{p.name}*{desc} — ${p.price:,.0f} CLP ({stock_str}) [ID: {p.id}]")
+                lines.append(
+                    f"• *{p.name}*{desc} — ${p.price:,.0f} CLP ({stock_str}) [ID: {p.id}]"
+                )
             return "\n".join(lines)
     except Exception as e:
         logger.error("Error in listar_productos_de_categoria: %s", e)
@@ -197,7 +208,9 @@ def buscar_producto(nombre: str) -> str:
             for p in products:
                 desc = f" ({p.description})" if p.description else ""
                 stock_str = f"Stock: {p.stock} un." if p.stock > 0 else "Sin stock"
-                lines.append(f"• *{p.name}*{desc} — ${p.price:,.0f} CLP ({stock_str}) [ID: {p.id}]")
+                lines.append(
+                    f"• *{p.name}*{desc} — ${p.price:,.0f} CLP ({stock_str}) [ID: {p.id}]"
+                )
             return "\n".join(lines)
     except Exception as e:
         logger.error("Error in buscar_producto: %s", e)
@@ -228,7 +241,15 @@ def agregar_al_carrito(producto: str, cantidad: int = 1) -> str:
             product = None
             try:
                 product_uuid = uuid.UUID(producto.strip())
-                product = db.query(Product).filter(Product.id == product_uuid, Product.tenant_id == tenant_id, Product.is_available).first()
+                product = (
+                    db.query(Product)
+                    .filter(
+                        Product.id == product_uuid,
+                        Product.tenant_id == tenant_id,
+                        Product.is_available,
+                    )
+                    .first()
+                )
             except ValueError:
                 pass
 
@@ -245,7 +266,9 @@ def agregar_al_carrito(producto: str, cantidad: int = 1) -> str:
                 if not products:
                     return f"No pude encontrar el producto '{producto}' para agregarlo al carro."
                 if len(products) > 1:
-                    options = [f"• *{p.name}* (ID: {p.id}) — ${p.price:,.0f}" for p in products]
+                    options = [
+                        f"• *{p.name}* (ID: {p.id}) — ${p.price:,.0f}" for p in products
+                    ]
                     return (
                         f"Encontré varias coincidencias para '{producto}'. Por favor, especifica el nombre o ID completo:\n"
                         + "\n".join(options)
@@ -257,15 +280,22 @@ def agregar_al_carrito(producto: str, cantidad: int = 1) -> str:
                 return f"Disculpa, solo tenemos {product.stock} unidades de '{product.name}' en stock. No puedo agregar {cantidad} unidades."
 
             # 3. Obtener conversación
-            conv = db.query(Conversation).filter(Conversation.session_id == session_id).first()
+            conv = (
+                db.query(Conversation)
+                .filter(Conversation.session_id == session_id)
+                .first()
+            )
             if not conv:
                 return "Error interno: la conversación no está registrada."
 
             # 4. Insertar o actualizar elemento
-            cart_item = db.query(CartItem).filter(
-                CartItem.session_id == session_id,
-                CartItem.product_id == product.id
-            ).first()
+            cart_item = (
+                db.query(CartItem)
+                .filter(
+                    CartItem.session_id == session_id, CartItem.product_id == product.id
+                )
+                .first()
+            )
 
             if cart_item:
                 cart_item.quantity += cantidad
@@ -310,10 +340,14 @@ def ver_carrito() -> str:
                 p = item.product
                 subtotal = p.price * item.quantity
                 total += subtotal
-                lines.append(f"• {item.quantity}x *{p.name}* (${p.price:,.0f} c/u) — *${subtotal:,.0f} CLP*")
+                lines.append(
+                    f"• {item.quantity}x *{p.name}* (${p.price:,.0f} c/u) — *${subtotal:,.0f} CLP*"
+                )
 
             lines.append(f"\n*Total acumulado: ${total:,.0f} CLP*")
-            lines.append("\nSi quieres confirmar tu pedido, facilítame tu *Nombre*, *Teléfono* y indica si es *Retiro* o *Despacho*.")
+            lines.append(
+                "\nSi quieres confirmar tu pedido, facilítame tu *Nombre*, *Teléfono* y indica si es *Retiro* o *Despacho*."
+            )
             return "\n".join(lines)
     except Exception as e:
         logger.error("Error in ver_carrito: %s", e)
@@ -366,6 +400,7 @@ def confirmar_pedido(telefono: str, metodo_entrega: str, direccion: str = "") ->
 
             # 1. Cargar local (Tenant)
             from models import Tenant
+
             tenant = db.query(Tenant).filter(Tenant.id == tenant_id).first()
             if not tenant:
                 return "Error: Local comercial no registrado."
@@ -376,8 +411,16 @@ def confirmar_pedido(telefono: str, metodo_entrega: str, direccion: str = "") ->
                 return "Tu carrito está vacío. Agrega algún producto antes de confirmar tu pedido."
 
             # 3. Obtener conversación
-            conv = db.query(Conversation).filter(Conversation.session_id == session_id).first()
-            cliente_nombre = conv.user.display_name if (conv and conv.user and conv.user.display_name) else "Cliente Anónimo"
+            conv = (
+                db.query(Conversation)
+                .filter(Conversation.session_id == session_id)
+                .first()
+            )
+            cliente_nombre = (
+                conv.user.display_name
+                if (conv and conv.user and conv.user.display_name)
+                else "Cliente Anónimo"
+            )
 
             # 4. Formatear y calcular subtotales
             detalle_telegram = []
@@ -387,8 +430,12 @@ def confirmar_pedido(telefono: str, metodo_entrega: str, direccion: str = "") ->
                 p = item.product
                 subtotal = p.price * item.quantity
                 total += subtotal
-                detalle_telegram.append(f"• {item.quantity}x {p.name} (${p.price:,.0f} c/u) — ${subtotal:,.0f}")
-                detalle_cliente.append(f"{item.quantity}x {p.name} (${p.price:,.0f} c/u)")
+                detalle_telegram.append(
+                    f"• {item.quantity}x {p.name} (${p.price:,.0f} c/u) — ${subtotal:,.0f}"
+                )
+                detalle_cliente.append(
+                    f"{item.quantity}x {p.name} (${p.price:,.0f} c/u)"
+                )
 
                 # Restar stock
                 if p.stock >= item.quantity:
@@ -410,8 +457,7 @@ def confirmar_pedido(telefono: str, metodo_entrega: str, direccion: str = "") ->
 
             msg_telegram += (
                 "----------------------------------------\n"
-                "Detalle del Pedido:\n"
-                + "\n".join(detalle_telegram) + "\n"
+                "Detalle del Pedido:\n" + "\n".join(detalle_telegram) + "\n"
                 "----------------------------------------\n"
                 f"Total Pedido: ${total:,.0f} CLP\n"
                 "----------------------------------------\n"
@@ -419,14 +465,20 @@ def confirmar_pedido(telefono: str, metodo_entrega: str, direccion: str = "") ->
             )
 
             # 6. Despachar a Telegram
-            bot_token = tenant.config.get("telegram_bot_token") or os.getenv("TELEGRAM_BOT_TOKEN")
-            chat_id = tenant.config.get("telegram_chat_id") or os.getenv("TELEGRAM_CHAT_ID")
+            bot_token = tenant.config.get("telegram_bot_token") or os.getenv(
+                "TELEGRAM_BOT_TOKEN"
+            )
+            chat_id = tenant.config.get("telegram_chat_id") or os.getenv(
+                "TELEGRAM_CHAT_ID"
+            )
 
             telegram_sent = False
             if bot_token and chat_id:
                 telegram_sent = send_telegram_message(bot_token, chat_id, msg_telegram)
             else:
-                logger.warning("Telegram configuration missing in tenant/env variables.")
+                logger.warning(
+                    "Telegram configuration missing in tenant/env variables."
+                )
 
             # 7. Vaciar el carrito de la base de datos
             db.query(CartItem).filter(CartItem.session_id == session_id).delete()
@@ -442,7 +494,9 @@ def confirmar_pedido(telefono: str, metodo_entrega: str, direccion: str = "") ->
                 f"📞 Nos comunicaremos contigo al teléfono {telefono} para coordinar el pago y la entrega del pedido."
             )
             if not telegram_sent:
-                ret_msg += "\n\n_(Nota: El local fue notificado. Nos contactaremos en breve)_"
+                ret_msg += (
+                    "\n\n_(Nota: El local fue notificado. Nos contactaremos en breve)_"
+                )
             return ret_msg
     except Exception as e:
         logger.error("Error in confirmar_pedido: %s", e)

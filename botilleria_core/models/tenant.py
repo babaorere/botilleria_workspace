@@ -37,9 +37,7 @@ class Tenant(Base):
         return self.config.get("human_available", False)
 
     def get_model(self) -> str:
-        return self.config.get(
-            "model", "nvidia_nim/google/gemma-4-31b-it"
-        )
+        return self.config.get("model", "nvidia_nim/google/gemma-4-31b-it")
 
     def get_api_key(self) -> str:
         return self.config.get("api_key", "")

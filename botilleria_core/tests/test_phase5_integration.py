@@ -90,9 +90,7 @@ def mock_tenant_1(tenant_id_1):
         return tenant.config.get("instruction", "")
 
     def get_model():
-        return tenant.config.get(
-            "model", "nvidia_nim/google/gemma-4-31b-it"
-        )
+        return tenant.config.get("model", "nvidia_nim/google/gemma-4-31b-it")
 
     def get_api_key():
         return tenant.config.get("api_key", "")
@@ -141,9 +139,7 @@ def mock_tenant_2(tenant_id_2):
         return tenant.config.get("instruction", "")
 
     def get_model():
-        return tenant.config.get(
-            "model", "nvidia_nim/google/gemma-4-31b-it"
-        )
+        return tenant.config.get("model", "nvidia_nim/google/gemma-4-31b-it")
 
     def get_api_key():
         return tenant.config.get("api_key", "")

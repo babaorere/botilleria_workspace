@@ -34,15 +34,15 @@ def test_kb_spell_corrector_unmatched():
 def test_kb_category_service_create():
     mock_db = MagicMock()
     tenant_id = uuid.uuid4()
-    
+
     service = KBCategoryService(mock_db, tenant_id)
-    
+
     service.repo.find_by_name_and_tenant = MagicMock(return_value=None)
     service.repo.save = MagicMock(side_effect=lambda x: x)
-    
+
     new_cat = service.create_category("envios", "Información de despachos")
-    
-    assert new_cat.name == "Delivery" # corrected
+
+    assert new_cat.name == "Delivery"  # corrected
     assert new_cat.description == "Información de despachos"
     assert new_cat.tenant_id == tenant_id
     service.repo.save.assert_called_once()
@@ -53,7 +53,9 @@ def test_kb_category_service_protect_general():
     tenant_id = uuid.uuid4()
     service = KBCategoryService(mock_db, tenant_id)
 
-    cat_general = KBCategory(id=uuid.uuid4(), tenant_id=tenant_id, name="General", description="System")
+    cat_general = KBCategory(
+        id=uuid.uuid4(), tenant_id=tenant_id, name="General", description="System"
+    )
     service.repo.find_by_id_and_tenant = MagicMock(return_value=cat_general)
 
     with pytest.raises(ValueError, match="no se puede editar"):
@@ -68,8 +70,12 @@ def test_kb_category_service_rename_to_general():
     tenant_id = uuid.uuid4()
     service = KBCategoryService(mock_db, tenant_id)
 
-    cat_other = KBCategory(id=uuid.uuid4(), tenant_id=tenant_id, name="Delivery", description="System")
+    cat_other = KBCategory(
+        id=uuid.uuid4(), tenant_id=tenant_id, name="Delivery", description="System"
+    )
     service.repo.find_by_id_and_tenant = MagicMock(return_value=cat_other)
 
-    with pytest.raises(ValueError, match="No se puede renombrar una categoría de respuesta a 'General'"):
+    with pytest.raises(
+        ValueError, match="No se puede renombrar una categoría de respuesta a 'General'"
+    ):
         service.update_category(cat_other.id, name="General")

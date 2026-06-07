@@ -206,20 +206,29 @@ async def test_compra_multiple_productos(
     session_id = str(uuid.uuid4())
 
     _, r1, _, _ = await chat_svc.process_message(
-        tenant=mock_tenant, user_id="user1", platform="whatsapp",
-        message="Dame una cerveza Kunstmann", session_id=session_id,
+        tenant=mock_tenant,
+        user_id="user1",
+        platform="whatsapp",
+        message="Dame una cerveza Kunstmann",
+        session_id=session_id,
     )
     assert r1 == "Respuesta normal"
 
     _, r2, _, _ = await chat_svc.process_message(
-        tenant=mock_tenant, user_id="user1", platform="whatsapp",
-        message="Agrega un vino tinto también", session_id=session_id,
+        tenant=mock_tenant,
+        user_id="user1",
+        platform="whatsapp",
+        message="Agrega un vino tinto también",
+        session_id=session_id,
     )
     assert r2 == "Respuesta normal"
 
     _, r3, _, _ = await chat_svc.process_message(
-        tenant=mock_tenant, user_id="user1", platform="whatsapp",
-        message="Y necesito papas fritas", session_id=session_id,
+        tenant=mock_tenant,
+        user_id="user1",
+        platform="whatsapp",
+        message="Y necesito papas fritas",
+        session_id=session_id,
     )
     assert r3 == "Respuesta normal"
 
@@ -617,33 +626,48 @@ async def test_conversacion_compra_completa(
     session_id = str(uuid.uuid4())
 
     _, r1, _, _ = await chat_svc.process_message(
-        tenant=mock_tenant, user_id="user1", platform="whatsapp",
-        message="Hola, quiero comprar algo", session_id=session_id,
+        tenant=mock_tenant,
+        user_id="user1",
+        platform="whatsapp",
+        message="Hola, quiero comprar algo",
+        session_id=session_id,
     )
     assert r1 == "Respuesta normal"
 
     _, r2, _, _ = await chat_svc.process_message(
-        tenant=mock_tenant, user_id="user1", platform="whatsapp",
-        message="Tienen cerveza artesanal?", session_id=session_id,
+        tenant=mock_tenant,
+        user_id="user1",
+        platform="whatsapp",
+        message="Tienen cerveza artesanal?",
+        session_id=session_id,
     )
     assert r2 == "Respuesta normal"
 
     _, r3, _, _ = await chat_svc.process_message(
-        tenant=mock_tenant, user_id="user1", platform="whatsapp",
-        message="Agrega 2 Kunstmann Torobayo", session_id=session_id,
+        tenant=mock_tenant,
+        user_id="user1",
+        platform="whatsapp",
+        message="Agrega 2 Kunstmann Torobayo",
+        session_id=session_id,
     )
     assert r3 == "Respuesta normal"
 
     _, r4, _, _ = await chat_svc.process_message(
-        tenant=mock_tenant, user_id="user1", platform="whatsapp",
-        message="Cuánto es el total?", session_id=session_id,
+        tenant=mock_tenant,
+        user_id="user1",
+        platform="whatsapp",
+        message="Cuánto es el total?",
+        session_id=session_id,
     )
     assert r4 == "Respuesta normal"
 
 
 @pytest.mark.asyncio
 async def test_estado_esperando_humano(
-    mock_db, mock_tenant, mock_llm_service, mock_user_service,
+    mock_db,
+    mock_tenant,
+    mock_llm_service,
+    mock_user_service,
 ):
     """Cuando el estado es ESPERANDO_HUMANO, el sistema debe responder acorde."""
     conv_mock = MagicMock()
@@ -669,7 +693,10 @@ async def test_estado_esperando_humano(
 
 @pytest.mark.asyncio
 async def test_estado_checkout_bloqueado(
-    mock_db, mock_tenant, mock_llm_service, mock_user_service,
+    mock_db,
+    mock_tenant,
+    mock_llm_service,
+    mock_user_service,
 ):
     """Cuando el estado es CHECKOUT_BLOQUEADO, el sistema debe responder acorde."""
     conv_mock = MagicMock()
@@ -742,17 +769,23 @@ async def test_ghost_click_version_match(
 
 @pytest.mark.asyncio
 async def test_error_llm_fallback(
-    mock_db, mock_tenant,
+    mock_db,
+    mock_tenant,
 ):
     """El controller debe devolver fallback empático cuando el LLM falla."""
     req = ChatRequest(
-        user_id="user1", platform="whatsapp", message="Hola",
+        user_id="user1",
+        platform="whatsapp",
+        message="Hola",
         session_id=str(uuid.uuid4()),
     )
     mock_llm = MagicMock()
     mock_llm.run_chat = AsyncMock(side_effect=LLMProviderError("Error de conexión"))
 
-    with patch("controllers.chat_controller.resolve_tenant_from_request", new_callable=AsyncMock) as resolve:
+    with patch(
+        "controllers.chat_controller.resolve_tenant_from_request",
+        new_callable=AsyncMock,
+    ) as resolve:
         resolve.return_value = mock_tenant
         with patch("controllers.chat_controller.KBService"):
             with patch("controllers.chat_controller.RAGContextBuilder") as rag:
@@ -760,15 +793,16 @@ async def test_error_llm_fallback(
                 with patch("services.chat_service.UserService"):
                     with patch("services.chat_service.ConversationService"):
                         response = await chat(
-                            request=req, background_tasks=MagicMock(),
-                            db=mock_db, llm=mock_llm,
+                            request=req,
+                            background_tasks=MagicMock(),
+                            db=mock_db,
+                            llm=mock_llm,
                             fastapi_request=MagicMock(),
                         )
                         assert "revisando la bodega" in response.response
 
 
 class TestBotilleriaSpellCorrector:
-
     def test_correccion_cerveza(self):
         assert BotilleriaSpellCorrector.correct("cerveza") == "Cervezas"
 
@@ -796,7 +830,6 @@ class TestBotilleriaSpellCorrector:
 
 
 class TestKBSpellCorrector:
-
     def test_correccion_envio(self):
         assert KBSpellCorrector.correct("envio") == "Delivery"
 

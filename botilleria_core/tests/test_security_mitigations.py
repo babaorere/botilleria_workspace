@@ -213,8 +213,12 @@ async def test_async_thread_delegation_in_chat_service() -> None:
     tenant.id = uuid.uuid4()
 
     # Mock _resolve_user_and_conversation to return a 3-tuple, avoiding real DB queries
-    with patch.object(service, "_resolve_user_and_conversation", return_value=(123, "NUEVO", 1)):
-        with patch("asyncio.to_thread", AsyncMock(return_value=(123, "NUEVO", 1))) as mock_to_thread:
+    with patch.object(
+        service, "_resolve_user_and_conversation", return_value=(123, "NUEVO", 1)
+    ):
+        with patch(
+            "asyncio.to_thread", AsyncMock(return_value=(123, "NUEVO", 1))
+        ) as mock_to_thread:
             # Act
             await service.process_message(
                 tenant=tenant,

@@ -77,7 +77,8 @@ def seed_default_tenant(db: Session) -> None:
                 "5. Responde en español siempre."
             ),
             "model": "nvidia_nim/google/gemma-4-31b-it",
-            "api_key": os.getenv("NVIDIA_API_KEY", "") or os.getenv("OPENROUTER_API_KEY", ""),
+            "api_key": os.getenv("NVIDIA_API_KEY", "")
+            or os.getenv("OPENROUTER_API_KEY", ""),
             "products": [],
         },
     )

@@ -27,6 +27,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/tenants/me", tags=["tenant_products_controller"])
 
+
 @router.get("/products", response_model=list[ProductResponse])
 def list_products(
     category: str | None = None,
@@ -55,7 +56,6 @@ def list_products(
         raise
 
 
-
 @router.post("/products", response_model=ProductResponse)
 def create_product(
     data: ProductCreateRequest,
@@ -82,7 +82,6 @@ def create_product(
     except Exception as e:
         logger.error("create_product failed: %s", e)
         raise
-
 
 
 @router.put("/products/{product_id}", response_model=ProductResponse)
@@ -115,7 +114,6 @@ def update_product(
         raise
 
 
-
 @router.delete("/products/{product_id}")
 def delete_product(
     product_id: str,
@@ -139,7 +137,6 @@ def delete_product(
         raise
 
 
-
 @router.get("/products/categories", response_model=list[str])
 def get_product_categories(
     db: Session = Depends(get_db),
@@ -161,7 +158,6 @@ def get_product_categories(
 # ── Knowledge Base ───────────────────────────────────────────────────────────
 
 
-
 @router.get("/categories", response_model=list[CategoryResponse])
 def list_categories(
     skip: int = 0,
@@ -181,7 +177,6 @@ def list_categories(
     except Exception as e:
         logger.error("list_categories failed: %s", e)
         raise
-
 
 
 @router.post("/categories", response_model=CategoryResponse)
@@ -208,7 +203,6 @@ def create_category(
     except Exception as e:
         logger.error("create_category failed: %s", e)
         raise
-
 
 
 @router.put("/categories/{category_id}", response_model=CategoryResponse)
@@ -239,7 +233,6 @@ def update_category(
         raise
 
 
-
 @router.delete("/categories/{category_id}")
 def delete_category(
     category_id: str,
@@ -264,6 +257,3 @@ def delete_category(
 
 
 # ── KB Categories CRUD ────────────────────────────────────────────────────────
-
-
-

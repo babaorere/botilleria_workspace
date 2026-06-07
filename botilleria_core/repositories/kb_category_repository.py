@@ -39,10 +39,11 @@ class KBCategoryRepository(JpaRepository[KBCategory]):
     ) -> KBCategory | None:
         return (
             self.db.query(KBCategory)
-            .filter(KBCategory.name.ilike(name.strip()), KBCategory.tenant_id == tenant_id)
+            .filter(
+                KBCategory.name.ilike(name.strip()), KBCategory.tenant_id == tenant_id
+            )
             .first()
         )
-    
+
     def delete(self, category: KBCategory) -> None:
         self.delete_by_id(category.id)
-

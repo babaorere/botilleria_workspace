@@ -17,7 +17,9 @@ logger = logging.getLogger(__name__)
 
 # The system MUST have a dedicated JWT_SECRET for security.
 if not settings.jwt_secret:
-    logger.warning("CRITICAL: jwt_secret is not set in environment. Falling back to unsafe temporary secret.")
+    logger.warning(
+        "CRITICAL: jwt_secret is not set in environment. Falling back to unsafe temporary secret."
+    )
 
 JWT_SECRET = settings.jwt_secret or "unsafe-temporary-secret"
 JWT_ALGORITHM = "HS256"

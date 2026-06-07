@@ -31,13 +31,18 @@ class LLMService:
             tenant_key not in self._runners
             or self._runner_specs.get(tenant_key) != current_spec
         ):
-            api_key = tenant.get_api_key() or os.getenv("NVIDIA_API_KEY") or os.getenv("OPENROUTER_API_KEY")
+            api_key = (
+                tenant.get_api_key()
+                or os.getenv("NVIDIA_API_KEY")
+                or os.getenv("OPENROUTER_API_KEY")
+            )
             if not api_key:
                 raise RuntimeError(
                     f"NVIDIA_API_KEY o OPENROUTER_API_KEY not configured for tenant {tenant.slug}"
                 )
 
             from agents.root_agent import BOTILLERIA_TOOLS
+
             agent = Agent(
                 name=f"{tenant.slug}_{int(time.time())}",
                 model=LiteLlm(model=tenant.get_model(), api_key=api_key),
@@ -69,6 +74,7 @@ class LLMService:
         rag_context: str | None = None,
     ) -> str:
         from config.context import tenant_id_var, user_id_var, session_id_var
+
         t_token = tenant_id_var.set(tenant.id)
         u_token = user_id_var.set(user_id)
         s_token = session_id_var.set(session_id)
@@ -120,6 +126,7 @@ class LLMService:
         rag_context: str | None = None,
     ) -> AsyncGenerator[str, None]:
         from config.context import tenant_id_var, user_id_var, session_id_var
+
         t_token = tenant_id_var.set(tenant.id)
         u_token = user_id_var.set(user_id)
         s_token = session_id_var.set(session_id)

@@ -25,7 +25,9 @@ class KBCategoryService:
             if not cats and skip == 0:
                 try:
                     with safe_transaction(self.db):
-                        existing_general = self.repo.find_by_name_and_tenant("General", self.tenant_id)
+                        existing_general = self.repo.find_by_name_and_tenant(
+                            "General", self.tenant_id
+                        )
                         if not existing_general:
                             general_cat = KBCategory(
                                 tenant_id=self.tenant_id,
@@ -56,7 +58,9 @@ class KBCategoryService:
 
             existing = self.repo.find_by_name_and_tenant(corrected_name, self.tenant_id)
             if existing:
-                raise ValueError(f"La categoría de respuesta '{corrected_name}' ya existe.")
+                raise ValueError(
+                    f"La categoría de respuesta '{corrected_name}' ya existe."
+                )
 
             category = KBCategory(
                 tenant_id=self.tenant_id,
@@ -80,15 +84,23 @@ class KBCategoryService:
                 raise ValueError("Categoría de respuesta no encontrada.")
 
             if category.name == "General":
-                raise ValueError("La categoría 'General' es del sistema y no se puede editar.")
+                raise ValueError(
+                    "La categoría 'General' es del sistema y no se puede editar."
+                )
 
             if name is not None:
                 corrected_name = KBSpellCorrector.correct(name)
                 if corrected_name == "General" and category.name != "General":
-                    raise ValueError("No se puede renombrar una categoría de respuesta a 'General'.")
-                existing = self.repo.find_by_name_and_tenant(corrected_name, self.tenant_id)
+                    raise ValueError(
+                        "No se puede renombrar una categoría de respuesta a 'General'."
+                    )
+                existing = self.repo.find_by_name_and_tenant(
+                    corrected_name, self.tenant_id
+                )
                 if existing and existing.id != category_id:
-                    raise ValueError(f"La categoría de respuesta '{corrected_name}' ya existe.")
+                    raise ValueError(
+                        f"La categoría de respuesta '{corrected_name}' ya existe."
+                    )
                 category.name = corrected_name
 
             if description is not None:
@@ -108,7 +120,9 @@ class KBCategoryService:
                 return False
 
             if category.name == "General":
-                raise ValueError("La categoría 'General' es del sistema y no se puede eliminar.")
+                raise ValueError(
+                    "La categoría 'General' es del sistema y no se puede eliminar."
+                )
 
             category_name = category.name
             self.repo.delete(category)
@@ -116,7 +130,7 @@ class KBCategoryService:
             # Reassign all KB entries (KnowledgeBase) with this category name to "General"
             self.db.query(KnowledgeBase).filter(
                 KnowledgeBase.tenant_id == self.tenant_id,
-                KnowledgeBase.category == category_name
+                KnowledgeBase.category == category_name,
             ).update({"category": "General"}, synchronize_session=False)
 
             self.db.flush()

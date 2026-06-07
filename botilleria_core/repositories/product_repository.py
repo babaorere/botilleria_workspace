@@ -91,15 +91,13 @@ class ProductRepository(JpaRepository[Product]):
         try:
             query = (
                 self.db.query(Product.category)
-                .filter(
-                    Product.tenant_id == tenant_id, Product.category.isnot(None)
-                )
+                .filter(Product.tenant_id == tenant_id, Product.category.isnot(None))
                 .distinct()
             )
             # Support mock tests that define pluck on query
             if hasattr(query, "pluck") and not type(query).__name__.startswith("Query"):
                 return sorted(list(query.pluck("category")))
-                
+
             results = query.all()
             return sorted(list({r[0] for r in results if r[0]}))
         except Exception as e:

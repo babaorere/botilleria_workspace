@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/tenants/me", tags=["tenant_kb_controller"])
 
+
 @router.get("/kb", response_model=list[KBEntryResponse])
 def list_kb_entries(
     category: str | None = None,
@@ -58,7 +59,6 @@ def list_kb_entries(
         raise
 
 
-
 @router.post("/kb", response_model=KBEntryResponse)
 def create_kb_entry(
     data: KBEntryCreateRequest,
@@ -82,7 +82,6 @@ def create_kb_entry(
     except Exception as e:
         logger.error("create_kb_entry failed: %s", e)
         raise
-
 
 
 @router.put("/kb/{entry_id}", response_model=KBEntryResponse)
@@ -113,7 +112,6 @@ def update_kb_entry(
         raise
 
 
-
 @router.delete("/kb/{entry_id}")
 def delete_kb_entry(
     entry_id: str,
@@ -135,7 +133,6 @@ def delete_kb_entry(
     except Exception as e:
         logger.error("delete_kb_entry failed: %s", e)
         raise
-
 
 
 @router.post("/kb/search", response_model=KBSearchResponse)
@@ -164,7 +161,6 @@ def search_kb(
         raise
 
 
-
 @router.get("/kb/categories", response_model=list[str])
 def get_kb_categories(
     db: Session = Depends(get_db),
@@ -186,7 +182,6 @@ def get_kb_categories(
 # ── Users & Conversations (read-only) ────────────────────────────────────────
 
 
-
 @router.get("/kb-categories", response_model=list[KBCategoryResponse])
 def list_kb_categories(
     skip: int = 0,
@@ -206,7 +201,6 @@ def list_kb_categories(
     except Exception as e:
         logger.error("list_kb_categories failed: %s", e)
         raise
-
 
 
 @router.post("/kb-categories", response_model=KBCategoryResponse)
@@ -233,7 +227,6 @@ def create_kb_category(
     except Exception as e:
         logger.error("create_kb_category failed: %s", e)
         raise
-
 
 
 @router.put("/kb-categories/{category_id}", response_model=KBCategoryResponse)
@@ -264,7 +257,6 @@ def update_kb_category(
         raise
 
 
-
 @router.delete("/kb-categories/{category_id}")
 def delete_kb_category(
     category_id: str,
@@ -288,4 +280,3 @@ def delete_kb_category(
     except Exception as e:
         logger.error("delete_kb_category failed: %s", e)
         raise
-

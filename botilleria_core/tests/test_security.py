@@ -93,6 +93,7 @@ def test_tenant_portal_auth_success(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
     from services.auth_service import AuthService
+
     token = AuthService.create_access_token({"sub": str(tenant_id), "role": "tenant"})
 
     app: FastAPI = FastAPI()
@@ -123,7 +124,9 @@ def test_tenant_portal_auth_missing_header(monkeypatch: pytest.MonkeyPatch) -> N
     assert "Missing or invalid Authorization header" in response.json()["detail"]
 
 
-def test_tenant_portal_auth_invalid_header_format(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_tenant_portal_auth_invalid_header_format(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     app: FastAPI = FastAPI()
 
     @app.get("/test-portal")
@@ -157,6 +160,7 @@ def test_tenant_portal_auth_invalid_jwt(monkeypatch: pytest.MonkeyPatch) -> None
 
 def test_tenant_portal_auth_wrong_role(monkeypatch: pytest.MonkeyPatch) -> None:
     from services.auth_service import AuthService
+
     token = AuthService.create_access_token({"sub": str(uuid.uuid4()), "role": "user"})
 
     app: FastAPI = FastAPI()
@@ -184,7 +188,10 @@ def test_tenant_portal_auth_tenant_not_found(monkeypatch: pytest.MonkeyPatch) ->
     )
 
     from services.auth_service import AuthService
-    token = AuthService.create_access_token({"sub": str(uuid.uuid4()), "role": "tenant"})
+
+    token = AuthService.create_access_token(
+        {"sub": str(uuid.uuid4()), "role": "tenant"}
+    )
 
     app: FastAPI = FastAPI()
 

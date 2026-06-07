@@ -129,19 +129,29 @@ class ChatService:
             )
 
             self._schedule_save(str(tenant.id), conv_id, "user", message)
-            
+
             # Anti-Ghost Clicks: Callback Versioning Pattern
             if message.startswith("v"):
                 import re
+
                 match = re.match(r"^v(\d+):(.*)$", message)
                 if match:
                     payload_version = int(match.group(1))
                     message_action = match.group(2)
                     if payload_version != version:
-                        logger.warning("Ghost click descartado: versión %s (actual es %s)", payload_version, version)
-                        return session_id, "Ese botón ya expiró. Por favor usa las opciones más recientes.", version, state
-                    message = message_action # Usamos la acción limpia para el LLM
-            
+                        logger.warning(
+                            "Ghost click descartado: versión %s (actual es %s)",
+                            payload_version,
+                            version,
+                        )
+                        return (
+                            session_id,
+                            "Ese botón ya expiró. Por favor usa las opciones más recientes.",
+                            version,
+                            state,
+                        )
+                    message = message_action  # Usamos la acción limpia para el LLM
+
             # Hybrid FSM Pattern Logic
             if state == "ESPERANDO_HUMANO":
                 response_text = "Estamos esperando a que un humano te atienda, por favor espera un momento."
@@ -154,7 +164,7 @@ class ChatService:
             if state == "POSPUESTA":
                 response_text = "Tu solicitud de atención humana ha sido pospuesta. Te atenderemos lo antes posible."
                 return session_id, response_text, version, state
-                
+
             if state == "CHECKOUT_BLOQUEADO":
                 response_text = "Estamos procesando tu pago. Si deseas cancelar o volver atrás, presiona el botón correspondiente."
                 return session_id, response_text, version, state
@@ -214,40 +224,55 @@ class ChatService:
             )
 
             self._schedule_save(str(tenant.id), conv_id, "user", message)
-            
+
             # Anti-Ghost Clicks: Callback Versioning Pattern
             if message.startswith("v"):
                 import re
+
                 match = re.match(r"^v(\d+):(.*)$", message)
                 if match:
                     payload_version = int(match.group(1))
                     message_action = match.group(2)
                     if payload_version != version:
-                        logger.warning("Ghost click descartado en stream: versión %s (actual es %s)", payload_version, version)
+                        logger.warning(
+                            "Ghost click descartado en stream: versión %s (actual es %s)",
+                            payload_version,
+                            version,
+                        )
+
                         async def error_stream():
                             yield "Ese botón ya expiró. Por favor usa las opciones más recientes."
+
                         return session_id, error_stream(), version, state
                     message = message_action
 
             # Hybrid FSM Pattern Logic
             if state == "ESPERANDO_HUMANO":
+
                 async def simple_stream():
                     yield "Estamos esperando a que un humano te atienda, por favor espera un momento."
+
                 return session_id, simple_stream(), version, state
 
             if state == "HUMANO_ATENDIENDO":
+
                 async def human_stream():
                     yield "Un agente humano te está atendiendo en este momento."
+
                 return session_id, human_stream(), version, state
 
             if state == "POSPUESTA":
+
                 async def postponed_stream():
                     yield "Tu solicitud de atención humana ha sido pospuesta. Te atenderemos lo antes posible."
+
                 return session_id, postponed_stream(), version, state
-                
+
             if state == "CHECKOUT_BLOQUEADO":
+
                 async def checkout_stream():
                     yield "Estamos procesando tu pago. Si deseas cancelar o volver atrás, presiona el botón correspondiente."
+
                 return session_id, checkout_stream(), version, state
 
             start_time = time.time()

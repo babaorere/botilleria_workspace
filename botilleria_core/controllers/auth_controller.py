@@ -31,7 +31,9 @@ def login(
 
     # Check for Admin login
     if username == "admin":
-        if hmac.compare_digest(password.encode("utf-8"), settings.admin_api_key.encode("utf-8")):
+        if hmac.compare_digest(
+            password.encode("utf-8"), settings.admin_api_key.encode("utf-8")
+        ):
             token = AuthService.create_access_token(
                 data={"sub": "admin", "role": "admin"}
             )

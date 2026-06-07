@@ -13,8 +13,19 @@ logger = logging.getLogger(__name__)
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from config.database import SessionLocal, set_tenant_context, _sync_engine, Base
+
 # Importar todos los modelos para registrarlos en la metadata de SQLAlchemy
-from models import Product, Tenant, Category, Conversation, User, Message, KnowledgeBase, CartItem, KBCategory
+from models import (
+    Product,
+    Tenant,
+    Category,
+    Conversation,
+    User,
+    Message,
+    KnowledgeBase,
+    CartItem,
+    KBCategory,
+)
 
 
 def seed() -> None:
@@ -62,7 +73,8 @@ def seed() -> None:
                         "5. Nunca inventes información de catálogo o precios."
                     ),
                     "model": "nvidia_nim/google/gemma-4-31b-it",
-                    "api_key": os.getenv("NVIDIA_API_KEY", "") or os.getenv("OPENROUTER_API_KEY", ""),
+                    "api_key": os.getenv("NVIDIA_API_KEY", "")
+                    or os.getenv("OPENROUTER_API_KEY", ""),
                     "telegram_bot_token": os.getenv("TELEGRAM_BOT_TOKEN", ""),
                     "telegram_chat_id": os.getenv("TELEGRAM_CHAT_ID", ""),
                 },
@@ -77,21 +89,67 @@ def seed() -> None:
 
         # Seed categories (always sync the 10 most common categories sorted by name)
         logger.info("Sembrando las 10 categorías principales ordenadas por nombre...")
-        db.query(Category).filter(Category.tenant_id == tenant_id).delete(synchronize_session=False)
+        db.query(Category).filter(Category.tenant_id == tenant_id).delete(
+            synchronize_session=False
+        )
         db.commit()
 
         cats = [
-            Category(tenant_id=tenant_id, name="Bebidas", description="Gaseosas, jugos y aguas mineralizadas"),
-            Category(tenant_id=tenant_id, name="Cervezas", description="Cervezas nacionales, importadas y artesanales"),
-            Category(tenant_id=tenant_id, name="Coctelería", description="Mixers, tónicas y bebidas preparadas"),
-            Category(tenant_id=tenant_id, name="Destilados", description="Pisco, ron, gin, vodka y whisky"),
-            Category(tenant_id=tenant_id, name="Espumantes", description="Champaña, sparkling y espumantes"),
-            Category(tenant_id=tenant_id, name="General", description="Categoría general por defecto"),
-            Category(tenant_id=tenant_id, name="Hielo", description="Hielo en cubos y hielo picado"),
-            Category(tenant_id=tenant_id, name="Licores", description="Licores dulces, cremas y bajativos"),
-            Category(tenant_id=tenant_id, name="Snacks", description="Papas fritas, frutos secos y complementos para picar"),
-            Category(tenant_id=tenant_id, name="Tabacos", description="Cigarrillos, tabaco para enrolar y accesorios"),
-            Category(tenant_id=tenant_id, name="Vinos", description="Vinos tintos, blancos y rosados")
+            Category(
+                tenant_id=tenant_id,
+                name="Bebidas",
+                description="Gaseosas, jugos y aguas mineralizadas",
+            ),
+            Category(
+                tenant_id=tenant_id,
+                name="Cervezas",
+                description="Cervezas nacionales, importadas y artesanales",
+            ),
+            Category(
+                tenant_id=tenant_id,
+                name="Coctelería",
+                description="Mixers, tónicas y bebidas preparadas",
+            ),
+            Category(
+                tenant_id=tenant_id,
+                name="Destilados",
+                description="Pisco, ron, gin, vodka y whisky",
+            ),
+            Category(
+                tenant_id=tenant_id,
+                name="Espumantes",
+                description="Champaña, sparkling y espumantes",
+            ),
+            Category(
+                tenant_id=tenant_id,
+                name="General",
+                description="Categoría general por defecto",
+            ),
+            Category(
+                tenant_id=tenant_id,
+                name="Hielo",
+                description="Hielo en cubos y hielo picado",
+            ),
+            Category(
+                tenant_id=tenant_id,
+                name="Licores",
+                description="Licores dulces, cremas y bajativos",
+            ),
+            Category(
+                tenant_id=tenant_id,
+                name="Snacks",
+                description="Papas fritas, frutos secos y complementos para picar",
+            ),
+            Category(
+                tenant_id=tenant_id,
+                name="Tabacos",
+                description="Cigarrillos, tabaco para enrolar y accesorios",
+            ),
+            Category(
+                tenant_id=tenant_id,
+                name="Vinos",
+                description="Vinos tintos, blancos y rosados",
+            ),
         ]
         cats.sort(key=lambda c: c.name)
         db.add_all(cats)
@@ -100,21 +158,67 @@ def seed() -> None:
 
         # Seed KBCategory (always sync the 11 most common categories sorted by name)
         logger.info("Sembrando las 11 categorías de respuestas ordenadas por nombre...")
-        db.query(KBCategory).filter(KBCategory.tenant_id == tenant_id).delete(synchronize_session=False)
+        db.query(KBCategory).filter(KBCategory.tenant_id == tenant_id).delete(
+            synchronize_session=False
+        )
         db.commit()
 
         kb_cats = [
-            KBCategory(tenant_id=tenant_id, name="Contacto", description="Información de contacto, teléfono, correo y redes sociales"),
-            KBCategory(tenant_id=tenant_id, name="Delivery", description="Horarios de despacho, zonas de cobertura y costos de envío"),
-            KBCategory(tenant_id=tenant_id, name="Devoluciones", description="Políticas de devolución, cambios y garantías de productos"),
-            KBCategory(tenant_id=tenant_id, name="Eventos", description="Servicios para fiestas, barriles de cerveza y shoperas"),
-            KBCategory(tenant_id=tenant_id, name="General", description="Categoría de respuestas general por defecto"),
-            KBCategory(tenant_id=tenant_id, name="Horarios", description="Horarios de atención de la botillería"),
-            KBCategory(tenant_id=tenant_id, name="Metodos de Pago", description="Formas de pago aceptadas (efectivo, tarjetas, transferencias)"),
-            KBCategory(tenant_id=tenant_id, name="Precios y Ofertas", description="Promociones, descuentos y lista de precios"),
-            KBCategory(tenant_id=tenant_id, name="Reclamos", description="Canal para ingresar quejas, reclamos o sugerencias"),
-            KBCategory(tenant_id=tenant_id, name="Stock y Pedidos", description="Consulta de stock, pedidos mayoristas y compras"),
-            KBCategory(tenant_id=tenant_id, name="Ubicacion", description="Dirección física de la tienda y cómo llegar")
+            KBCategory(
+                tenant_id=tenant_id,
+                name="Contacto",
+                description="Información de contacto, teléfono, correo y redes sociales",
+            ),
+            KBCategory(
+                tenant_id=tenant_id,
+                name="Delivery",
+                description="Horarios de despacho, zonas de cobertura y costos de envío",
+            ),
+            KBCategory(
+                tenant_id=tenant_id,
+                name="Devoluciones",
+                description="Políticas de devolución, cambios y garantías de productos",
+            ),
+            KBCategory(
+                tenant_id=tenant_id,
+                name="Eventos",
+                description="Servicios para fiestas, barriles de cerveza y shoperas",
+            ),
+            KBCategory(
+                tenant_id=tenant_id,
+                name="General",
+                description="Categoría de respuestas general por defecto",
+            ),
+            KBCategory(
+                tenant_id=tenant_id,
+                name="Horarios",
+                description="Horarios de atención de la botillería",
+            ),
+            KBCategory(
+                tenant_id=tenant_id,
+                name="Metodos de Pago",
+                description="Formas de pago aceptadas (efectivo, tarjetas, transferencias)",
+            ),
+            KBCategory(
+                tenant_id=tenant_id,
+                name="Precios y Ofertas",
+                description="Promociones, descuentos y lista de precios",
+            ),
+            KBCategory(
+                tenant_id=tenant_id,
+                name="Reclamos",
+                description="Canal para ingresar quejas, reclamos o sugerencias",
+            ),
+            KBCategory(
+                tenant_id=tenant_id,
+                name="Stock y Pedidos",
+                description="Consulta de stock, pedidos mayoristas y compras",
+            ),
+            KBCategory(
+                tenant_id=tenant_id,
+                name="Ubicacion",
+                description="Dirección física de la tienda y cómo llegar",
+            ),
         ]
         kb_cats.sort(key=lambda c: c.name)
         db.add_all(kb_cats)
@@ -122,9 +226,14 @@ def seed() -> None:
         logger.info("Categorías de respuestas sembradas exitosamente.")
 
         # 3. Verificar si ya existen productos para este tenant
-        existing_count = db.query(Product).filter(Product.tenant_id == tenant_id).count()
+        existing_count = (
+            db.query(Product).filter(Product.tenant_id == tenant_id).count()
+        )
         if existing_count > 0:
-            logger.info("El catálogo ya contiene %s productos. Omitiendo la siembra de datos.", existing_count)
+            logger.info(
+                "El catálogo ya contiene %s productos. Omitiendo la siembra de datos.",
+                existing_count,
+            )
             return
 
         # 4. Lista de productos realistas

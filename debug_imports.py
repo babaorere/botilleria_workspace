@@ -1,6 +1,7 @@
 """
 Simple test to verify the imports work.
 """
+
 import sys
 import os
 
@@ -13,12 +14,12 @@ try:
     print("✓ Successfully imported SessionLocal")
 except Exception as e:
     print("✗ Failed to import SessionLocal:", e)
-    
+
 try:
     print("✓ Successfully imported settings")
 except Exception as e:
     print("✗ Failed to import settings:", e)
-    
+
 try:
     print("✓ Successfully imported Tenant")
 except Exception as e:

@@ -44,7 +44,9 @@ async def verify_admin_key(
             detail="Missing X-Admin-API-Key header",
         )
 
-    if not hmac.compare_digest(x_admin_api_key.encode("utf-8"), settings.admin_api_key.encode("utf-8")):
+    if not hmac.compare_digest(
+        x_admin_api_key.encode("utf-8"), settings.admin_api_key.encode("utf-8")
+    ):
         logger.warning("Invalid Admin API key attempt")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

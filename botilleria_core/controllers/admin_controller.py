@@ -358,9 +358,19 @@ def get_system_metrics(
 
         for tenant in tenants:
             total_users += db.query(User).filter(User.tenant_id == tenant.id).count()
-            total_conversations += db.query(Conversation).filter(Conversation.tenant_id == tenant.id).count()
-            total_kb_entries += db.query(KnowledgeBase).filter(KnowledgeBase.tenant_id == tenant.id).count()
-            total_products += db.query(Product).filter(Product.tenant_id == tenant.id).count()
+            total_conversations += (
+                db.query(Conversation)
+                .filter(Conversation.tenant_id == tenant.id)
+                .count()
+            )
+            total_kb_entries += (
+                db.query(KnowledgeBase)
+                .filter(KnowledgeBase.tenant_id == tenant.id)
+                .count()
+            )
+            total_products += (
+                db.query(Product).filter(Product.tenant_id == tenant.id).count()
+            )
 
         return {
             "active_tenants": len(tenants),
