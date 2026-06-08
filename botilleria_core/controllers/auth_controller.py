@@ -1,12 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+import logging
 
 from config.database import get_db
 from config.settings import settings
 from services.auth_service import AuthService
 from services.tenant_service import TenantService
 from middleware.security import oauth2_scheme
+
+logger = logging.getLogger(__name__)
 
 
 router = APIRouter(
@@ -31,6 +34,13 @@ def login(
 
     # Check for Admin login
     if username == "admin":
+        if not settings.admin_api_key or len(settings.admin_api_key) < 8:
+            logger.critical("ADMIN_API_KEY no está configurada o es demasiado corta. Bloqueando acceso de admin por seguridad.")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Incorrect username or password",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
         if hmac.compare_digest(
             password.encode("utf-8"), settings.admin_api_key.encode("utf-8")
         ):

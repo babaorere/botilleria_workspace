@@ -9,6 +9,7 @@ class TenantCreateRequest(BaseModel):
     instruction: str | None = None
     model: str | None = None
     api_key: str | None = None
+    portal_token: str | None = None
 
 
 class ChannelRouteCreateRequest(BaseModel):

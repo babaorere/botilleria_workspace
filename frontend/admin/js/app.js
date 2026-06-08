@@ -165,6 +165,7 @@ class AdminApp {
                         <button class="btn btn-sm btn-secondary" onclick="app.toggleStatus('${t.id}', '${t.status}')">
                             ${t.status === 'active' ? 'Desactivar' : 'Activar'}
                         </button>
+                        <button class="btn btn-sm btn-secondary" onclick="app.changeTenantPassword('${t.id}', '${t.name}')">🔑 Clave</button>
                         <button class="btn btn-sm btn-danger" onclick="app.deleteTenant('${t.id}')">Eliminar</button>
                     </td>
                 `;
@@ -233,18 +234,22 @@ class AdminApp {
                     <input type="text" id="tenantName" required placeholder="Botillería Mi Negocio">
                 </div>
                 <div class="form-group">
-                    <label>Instrucción del Agente</label>
-                    <textarea id="tenantInstruction" rows="5" required placeholder="Eres el asistente virtual de..."></textarea>
+                    <label>Contraseña del Portal (Portal Token)</label>
+                    <input type="text" id="tenantPortalToken" placeholder="Opcional: Dejar vacío para generar clave aleatoria">
                 </div>
                 <div class="form-group">
-                    <label>Modelo</label>
-                    <input type="text" id="tenantModel" value="openrouter/nvidia/nemotron-3-super-120b-a12b:free">
+                    <label>Instrucción del Agente (System Prompt)</label>
+                    <textarea id="tenantInstruction" rows="4" placeholder="Opcional: Instrucciones personalizadas del agente..."></textarea>
                 </div>
                 <div class="form-group">
-                    <label>API Key (OpenRouter)</label>
-                    <input type="password" id="tenantApiKey" placeholder="sk-or-...">
+                    <label>Modelo LLM</label>
+                    <input type="text" id="tenantModel" placeholder="Opcional: openrouter/nvidia/...">
                 </div>
-                <button type="submit" class="btn btn-primary">Crear Tenant</button>
+                <div class="form-group">
+                    <label>API Key (OpenRouter/NVIDIA)</label>
+                    <input type="password" id="tenantApiKey" placeholder="Opcional: sk-or-...">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">Crear Tenant</button>
             </form>
         `;
 
@@ -252,15 +257,25 @@ class AdminApp {
             e.preventDefault();
             try {
                 const data = {
-                    slug: document.getElementById('tenantSlug').value,
-                    name: document.getElementById('tenantName').value,
-                    instruction: document.getElementById('tenantInstruction').value,
-                    model: document.getElementById('tenantModel').value,
-                    api_key: document.getElementById('tenantApiKey').value,
+                    slug: document.getElementById('tenantSlug').value.trim(),
+                    name: document.getElementById('tenantName').value.trim(),
+                    portal_token: document.getElementById('tenantPortalToken').value.trim() || null,
+                    instruction: document.getElementById('tenantInstruction').value.trim() || null,
+                    model: document.getElementById('tenantModel').value.trim() || null,
+                    api_key: document.getElementById('tenantApiKey').value.trim() || null,
                 };
-                await this.fetch('/admin/tenants', { method: 'POST', body: JSON.stringify(data) });
-                this.showToast('Tenant creado', 'success');
+                const result = await this.fetch('/admin/tenants', { method: 'POST', body: JSON.stringify(data) });
+                this.showToast('Tenant creado con éxito', 'success');
                 modal.classList.remove('active');
+                
+                // Show modal with the tenant login credentials
+                setTimeout(() => {
+                    alert(`¡Tenant Creado Exitosamente!\n\n` +
+                          `slug (Usuario): ${result.slug}\n` +
+                          `Contraseña: ${result.portal_token}\n\n` +
+                          `IMPORTANTE: Copia esta contraseña ahora. No se volverá a mostrar completa.`);
+                }, 100);
+                
                 await this.loadTenants();
                 await this.loadDashboard();
             } catch (err) {
@@ -293,6 +308,40 @@ class AdminApp {
         } catch (err) {
             this.showToast(err.message, 'error');
         }
+    }
+
+    changeTenantPassword(id, name) {
+        const modal = document.getElementById('modal');
+        const title = document.getElementById('modalTitle');
+        const body = document.getElementById('modalBody');
+
+        title.textContent = `Cambiar contraseña de ${name}`;
+        body.innerHTML = `
+            <form id="passwordForm">
+                <div class="form-group">
+                    <label>Nueva Contraseña (Mín. 8 caracteres)</label>
+                    <input type="text" id="newPortalToken" required minlength="8" placeholder="Escribe la nueva contraseña...">
+                </div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 10px;">Actualizar Contraseña</button>
+            </form>
+        `;
+
+        document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                const token = document.getElementById('newPortalToken').value.trim();
+                await this.fetch(`/admin/tenants/${id}/portal-token`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ portal_token: token }),
+                });
+                this.showToast('Contraseña actualizada con éxito', 'success');
+                modal.classList.remove('active');
+            } catch (err) {
+                this.showToast(err.message, 'error');
+            }
+        });
+
+        modal.classList.add('active');
     }
 
     editSetting(key) {

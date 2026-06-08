@@ -9,6 +9,7 @@ class TenantResponse(BaseModel):
     slug: str
     name: str
     status: str
+    portal_token: str | None = None
 
     model_config = {"from_attributes": True}
 

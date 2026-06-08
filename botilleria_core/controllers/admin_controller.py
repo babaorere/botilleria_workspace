@@ -53,6 +53,9 @@ def create_tenant(
     db: Session = Depends(get_db),
 ) -> TenantResponse:
     try:
+        import secrets
+        portal_token = data.portal_token or secrets.token_urlsafe(12)
+        
         tenant_service = TenantService(db)
         with safe_transaction(db):
             tenant = tenant_service.create_tenant(
@@ -62,6 +65,7 @@ def create_tenant(
                     "instruction": data.instruction,
                     "model": data.model,
                     "api_key": data.api_key,
+                    "portal_token": portal_token,
                     "products": [],
                 },
             )
@@ -172,6 +176,9 @@ def delete_tenant(
         if not tenant:
             raise HTTPException(404, f"Tenant {tenant_id} not found")
 
+        if tenant.slug == "el_buen_trago":
+            raise HTTPException(400, "No se puede eliminar el tenant principal (el_buen_trago)")
+
         with safe_transaction(db):
             db.delete(tenant)
 
@@ -245,6 +252,40 @@ def update_agent_config(
         raise
     except Exception as e:
         logger.error("admin.update_agent_config failed [id=%s]: %s", tenant_id, e)
+        raise
+
+
+@router.put("/tenants/{tenant_id}/portal-token")
+def update_tenant_portal_token(
+    tenant_id: str,
+    data: dict[str, Any],
+    db: Session = Depends(get_db),
+) -> dict:
+    try:
+        tenant_service = TenantService(db)
+        tenant = tenant_service.get_tenant_by_id(uuid.UUID(tenant_id))
+        if not tenant:
+            raise HTTPException(404, f"Tenant {tenant_id} not found")
+
+        token = data.get("portal_token")
+        if not token or len(token) < 8:
+            raise HTTPException(400, "La contraseña del portal debe tener al menos 8 caracteres")
+
+        with safe_transaction(db):
+            config = tenant.config.copy()
+            config["portal_token"] = token
+            tenant.config = config
+            db.flush()
+
+        return {
+            "status": "updated",
+            "tenant_id": tenant_id,
+            "has_portal_token": True,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error("admin.update_tenant_portal_token failed [id=%s]: %s", tenant_id, e)
         raise
 
 
