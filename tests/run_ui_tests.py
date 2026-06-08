@@ -17,7 +17,6 @@ try:
 except ImportError:
     print("[WARN] Playwright no está instalado. Instalándolo en el sistema...")
     subprocess.check_call([sys.executable, "-m", "pip", "install", "playwright"])
-    subprocess.check_call([sys.executable, "-m", "playwright", "install", "chromium"])
     from playwright.sync_api import sync_playwright
 
 # --- Cargar configuración del .env.local ---
@@ -43,9 +42,9 @@ def run_tests():
     print("=====================================================================")
     
     with sync_playwright() as p:
-        # Abrimos el navegador Chromium visible (headless=False)
+        # Abrimos el navegador Chrome del sistema visible (headless=False)
         # slow_mo introduce una pausa entre clics y teclas para simular ritmo humano
-        browser = p.chromium.launch(headless=False, slow_mo=800)
+        browser = p.chromium.launch(headless=False, slow_mo=800, channel="chrome")
         context = browser.new_context(viewport={"width": 1280, "height": 800})
         page = context.new_page()
         
