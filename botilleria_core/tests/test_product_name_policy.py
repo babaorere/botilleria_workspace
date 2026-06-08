@@ -18,7 +18,10 @@ def test_get_levenshtein_distance():
 
 def test_parse_presentation():
     assert parse_presentation("Cristal 500cc") == "500cc"
-    assert parse_presentation("Cristal 1.2L Botella Retornable") == "1.2l botella retornable"
+    assert (
+        parse_presentation("Cristal 1.2L Botella Retornable")
+        == "1.2l botella retornable"
+    )
     assert parse_presentation("Pisco Mistral 35º 750ml") == "750ml"
     assert parse_presentation("Corona Lata") == "lata"
     assert parse_presentation("Escudo") is None
@@ -89,7 +92,9 @@ def test_tenant_slug_policy():
     t2 = Tenant(id=t2_id, slug="escudo", name="Escudo Store")
 
     # Mock tenant repository methods
-    service.tenant_repo.find_by_slug = MagicMock(side_effect=lambda s: t1 if s == "cristal" else (t2 if s == "escudo" else None))
+    service.tenant_repo.find_by_slug = MagicMock(
+        side_effect=lambda s: t1 if s == "cristal" else (t2 if s == "escudo" else None)
+    )
     service.tenant_repo.find_all = MagicMock(return_value=[t1, t2])
 
     # Exact duplicate slug should raise ValueError

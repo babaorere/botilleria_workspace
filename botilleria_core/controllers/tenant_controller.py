@@ -23,8 +23,9 @@ def create_tenant(
 ) -> TenantResponse:
     try:
         import secrets
+
         portal_token = data.portal_token or secrets.token_urlsafe(12)
-        
+
         tenant_service = TenantService(db)
         with safe_transaction(db):
             tenant = tenant_service.create_tenant(

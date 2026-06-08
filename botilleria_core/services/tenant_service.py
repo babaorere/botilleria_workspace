@@ -14,12 +14,13 @@ from exceptions.tenant_exceptions import TenantNotFoundError
 
 logger = logging.getLogger(__name__)
 
+
 def get_levenshtein_distance(s1: str, s2: str) -> int:
     if len(s1) < len(s2):
         return get_levenshtein_distance(s2, s1)
     if len(s2) == 0:
         return len(s1)
-    
+
     previous_row = range(len(s2) + 1)
     for i, c1 in enumerate(s1):
         current_row = [i + 1]
@@ -29,7 +30,7 @@ def get_levenshtein_distance(s1: str, s2: str) -> int:
             substitutions = previous_row[j] + (c1 != c2)
             current_row.append(min(insertions, deletions, substitutions))
         previous_row = current_row
-        
+
     return previous_row[-1]
 
 
@@ -82,7 +83,7 @@ class TenantService:
 
     def validate_slug(self, slug: str, exclude_id: uuid.UUID | None = None) -> str:
         slug_clean = slug.strip().lower()
-        
+
         # Check exact match
         existing = self.get_tenant_by_slug(slug_clean)
         if existing and (exclude_id is None or existing.id != exclude_id):

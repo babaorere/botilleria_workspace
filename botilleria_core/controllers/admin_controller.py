@@ -54,8 +54,9 @@ def create_tenant(
 ) -> TenantResponse:
     try:
         import secrets
+
         portal_token = data.portal_token or secrets.token_urlsafe(12)
-        
+
         tenant_service = TenantService(db)
         with safe_transaction(db):
             tenant = tenant_service.create_tenant(
@@ -113,7 +114,9 @@ def update_tenant(
             if "name" in data:
                 tenant.name = data["name"]
             if "slug" in data:
-                tenant.slug = tenant_service.validate_slug(data["slug"], exclude_id=tenant.id)
+                tenant.slug = tenant_service.validate_slug(
+                    data["slug"], exclude_id=tenant.id
+                )
             if "status" in data:
                 tenant.status = data["status"]
             if "email" in data:
@@ -183,7 +186,9 @@ def delete_tenant(
             raise HTTPException(404, f"Tenant {tenant_id} not found")
 
         if tenant.slug == "el_buen_trago":
-            raise HTTPException(400, "No se puede eliminar el tenant principal (el_buen_trago)")
+            raise HTTPException(
+                400, "No se puede eliminar el tenant principal (el_buen_trago)"
+            )
 
         with safe_transaction(db):
             db.delete(tenant)
@@ -275,7 +280,9 @@ def update_tenant_portal_token(
 
         token = data.get("portal_token")
         if not token or len(token) < 8:
-            raise HTTPException(400, "La contraseña del portal debe tener al menos 8 caracteres")
+            raise HTTPException(
+                400, "La contraseña del portal debe tener al menos 8 caracteres"
+            )
 
         with safe_transaction(db):
             config = tenant.config.copy()
@@ -291,7 +298,9 @@ def update_tenant_portal_token(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("admin.update_tenant_portal_token failed [id=%s]: %s", tenant_id, e)
+        logger.error(
+            "admin.update_tenant_portal_token failed [id=%s]: %s", tenant_id, e
+        )
         raise
 
 

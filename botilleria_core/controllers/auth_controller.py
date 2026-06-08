@@ -35,7 +35,9 @@ def login(
     # Check for Admin login
     if username == "admin":
         if not settings.admin_api_key or len(settings.admin_api_key) < 8:
-            logger.critical("ADMIN_API_KEY no está configurada o es demasiado corta. Bloqueando acceso de admin por seguridad.")
+            logger.critical(
+                "ADMIN_API_KEY no está configurada o es demasiado corta. Bloqueando acceso de admin por seguridad."
+            )
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Incorrect username or password",

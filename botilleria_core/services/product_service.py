@@ -11,12 +11,13 @@ from repositories.product_repository import ProductRepository
 
 logger = logging.getLogger(__name__)
 
+
 def get_levenshtein_distance(s1: str, s2: str) -> int:
     if len(s1) < len(s2):
         return get_levenshtein_distance(s2, s1)
     if len(s2) == 0:
         return len(s1)
-    
+
     previous_row = range(len(s2) + 1)
     for i, c1 in enumerate(s1):
         current_row = [i + 1]
@@ -26,24 +27,26 @@ def get_levenshtein_distance(s1: str, s2: str) -> int:
             substitutions = previous_row[j] + (c1 != c2)
             current_row.append(min(insertions, deletions, substitutions))
         previous_row = current_row
-        
+
     return previous_row[-1]
 
 
 def parse_presentation(name: str) -> str | None:
     # Patrón para volumen/formato (ej. 500cc, 1L, botella, lata)
-    pattern = r'\b\d+(?:\.\d+)?\s*(?:ml|cc|cl|l|gr|g|kg|oz|lt|lts)\b|\b(?:lata|botella|pack|caja|retornable|desechable|lts?|grs?|kgs?)\b'
+    pattern = r"\b\d+(?:\.\d+)?\s*(?:ml|cc|cl|l|gr|g|kg|oz|lt|lts)\b|\b(?:lata|botella|pack|caja|retornable|desechable|lts?|grs?|kgs?)\b"
     matches = re.findall(pattern, name, re.IGNORECASE)
     if matches:
         return " ".join(matches).lower()
     return None
 
 
-def check_product_name_policy(new_name: str, existing_products: list[Product], exclude_id: uuid.UUID | None = None) -> None:
+def check_product_name_policy(
+    new_name: str, existing_products: list[Product], exclude_id: uuid.UUID | None = None
+) -> None:
     new_name_clean = new_name.strip()
     new_name_lower = new_name_clean.lower()
     new_pres = parse_presentation(new_name_clean)
-    
+
     # 1. Validación de duplicado exacto
     for p in existing_products:
         if exclude_id and p.id == exclude_id:
@@ -54,28 +57,28 @@ def check_product_name_policy(new_name: str, existing_products: list[Product], e
                 "Si se trata de otra presentación, incluye el formato o volumen "
                 "(ej. 'Cristal 500cc' en lugar de sólo 'Cristal')."
             )
-            
+
     # 2. Validación de similitud y desambiguación de presentación
     # Limpiamos los patrones de presentación para extraer el nombre base
     def get_base_name(name: str) -> str:
-        pattern = r'\b\d+(?:\.\d+)?\s*(?:ml|cc|cl|l|gr|g|kg|oz|lt|lts)\b|\b(?:lata|botella|pack|caja|retornable|desechable|lts?|grs?|kgs?)\b'
-        base = re.sub(pattern, '', name, flags=re.IGNORECASE)
-        base = re.sub(r'[^\w\s]', ' ', base)
-        base = re.sub(r'\s+', ' ', base).strip().lower()
+        pattern = r"\b\d+(?:\.\d+)?\s*(?:ml|cc|cl|l|gr|g|kg|oz|lt|lts)\b|\b(?:lata|botella|pack|caja|retornable|desechable|lts?|grs?|kgs?)\b"
+        base = re.sub(pattern, "", name, flags=re.IGNORECASE)
+        base = re.sub(r"[^\w\s]", " ", base)
+        base = re.sub(r"\s+", " ", base).strip().lower()
         return base
 
     new_base = get_base_name(new_name_clean)
-    
+
     for p in existing_products:
         if exclude_id and p.id == exclude_id:
             continue
         p_name_clean = p.name.strip()
         p_base = get_base_name(p_name_clean)
-        
+
         # Si los nombres base son idénticos o extremadamente similares (distancia <= 1)
         if new_base == p_base or get_levenshtein_distance(new_base, p_base) <= 1:
             p_pres = parse_presentation(p_name_clean)
-            
+
             # Ambos deben tener especificadores de presentación para diferenciarse
             if not new_pres or not p_pres:
                 raise ValueError(
@@ -181,8 +184,12 @@ class ProductService:
 
             if name is not None:
                 # Validar la política de nombre del producto excluyendo el producto actual
-                existing_products = self.repo.find_by_tenant_id(self.tenant_id, limit=1000)
-                check_product_name_policy(name, existing_products, exclude_id=product_id)
+                existing_products = self.repo.find_by_tenant_id(
+                    self.tenant_id, limit=1000
+                )
+                check_product_name_policy(
+                    name, existing_products, exclude_id=product_id
+                )
                 product.name = name
             if description is not None:
                 product.description = description
