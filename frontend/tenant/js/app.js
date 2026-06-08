@@ -218,11 +218,26 @@ class TenantApp {
             document.getElementById('profileWebsite').value = profile.website || '';
             document.getElementById('profileLogo').value = profile.logo_url || '';
             document.getElementById('profileHours').value = profile.business_hours ? JSON.stringify(profile.business_hours, null, 2) : '';
-            document.getElementById('statusBadge').textContent = profile.status === 'active' ? 'Activo' : 'Inactivo';
+            const statusBadge = document.getElementById('statusBadge');
+            if (statusBadge) {
+                if (profile.status === 'active') {
+                    statusBadge.textContent = 'Activo';
+                    statusBadge.className = 'status-badge active';
+                } else {
+                    statusBadge.textContent = 'Inactivo';
+                    statusBadge.className = 'status-badge inactive';
+                }
+            }
             
             const toggle = document.getElementById('humanAvailableToggle');
+            const statusText = document.getElementById('humanAvailableStatus');
             if (toggle) {
                 toggle.checked = !!profile.human_available;
+                if (statusText) {
+                    statusText.textContent = toggle.checked ? 'CONECTADO' : 'DESCONECTADO';
+                    statusText.style.background = toggle.checked ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)';
+                    statusText.style.color = toggle.checked ? 'var(--success)' : 'var(--danger)';
+                }
             }
         } catch (err) {
             console.error('Profile load failed:', err);
@@ -231,6 +246,7 @@ class TenantApp {
 
     setupHumanToggle() {
         const toggle = document.getElementById('humanAvailableToggle');
+        const statusText = document.getElementById('humanAvailableStatus');
         if (toggle) {
             toggle.addEventListener('change', async () => {
                 try {
@@ -241,13 +257,23 @@ class TenantApp {
                         })
                     });
                     this.showToast(`Disponibilidad humana: ${toggle.checked ? 'Activa' : 'Inactiva'}`, 'success');
+                    if (statusText) {
+                        statusText.textContent = toggle.checked ? 'CONECTADO' : 'DESCONECTADO';
+                        statusText.style.background = toggle.checked ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)';
+                        statusText.style.color = toggle.checked ? 'var(--success)' : 'var(--danger)';
+                    }
                 } catch (err) {
                     this.showToast(err.message, 'error');
                     toggle.checked = !toggle.checked;
+                    if (statusText) {
+                        statusText.textContent = toggle.checked ? 'CONECTADO' : 'DESCONECTADO';
+                        statusText.style.background = toggle.checked ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)';
+                        statusText.style.color = toggle.checked ? 'var(--success)' : 'var(--danger)';
+                    }
                 }
             });
         }
-    }
+    } }
 
     setupQueueFilters() {
         const filterState = document.getElementById('queueFilterState');
