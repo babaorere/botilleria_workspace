@@ -70,6 +70,10 @@ def create_tenant(
                 },
             )
         return TenantResponse.model_validate(tenant)
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error("admin.create_tenant failed [slug=%s]: %s", data.slug, e)
         raise
@@ -109,7 +113,7 @@ def update_tenant(
             if "name" in data:
                 tenant.name = data["name"]
             if "slug" in data:
-                tenant.slug = data["slug"]
+                tenant.slug = tenant_service.validate_slug(data["slug"], exclude_id=tenant.id)
             if "status" in data:
                 tenant.status = data["status"]
             if "email" in data:
@@ -133,6 +137,8 @@ def update_tenant(
         return TenantProfileResponse.model_validate(tenant)
     except HTTPException:
         raise
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error("admin.update_tenant failed [id=%s]: %s", tenant_id, e)
         raise

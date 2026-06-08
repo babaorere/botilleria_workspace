@@ -657,11 +657,11 @@ class TenantApp {
                 <div class="form-row">
                     <div class="form-group">
                         <label>Precio</label>
-                        <input type="number" id="prodPrice" value="${product?.price || ''}" step="0.01">
+                        <input type="number" id="prodPrice" value="${product?.price || ''}" step="0.01" min="0">
                     </div>
                     <div class="form-group">
                         <label>Stock</label>
-                        <input type="number" id="prodStock" value="${product?.stock || 0}">
+                        <input type="number" id="prodStock" value="${product?.stock || 0}" min="0" step="1">
                     </div>
                 </div>
                 <div class="form-group">

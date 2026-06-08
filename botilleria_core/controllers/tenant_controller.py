@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from config.database import get_db, safe_transaction
@@ -39,6 +39,10 @@ def create_tenant(
                 },
             )
         return TenantResponse.model_validate(tenant)
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error("create_tenant failed [slug=%s]: %s", data.slug, e)
         raise

@@ -79,6 +79,8 @@ def create_product(
         return ProductResponse.model_validate(product)
     except HTTPException:
         raise
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error("create_product failed: %s", e)
         raise
@@ -109,6 +111,8 @@ def update_product(
         return ProductResponse.model_validate(product)
     except HTTPException:
         raise
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         logger.error("update_product failed: %s", e)
         raise

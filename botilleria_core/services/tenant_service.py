@@ -14,6 +14,24 @@ from exceptions.tenant_exceptions import TenantNotFoundError
 
 logger = logging.getLogger(__name__)
 
+def get_levenshtein_distance(s1: str, s2: str) -> int:
+    if len(s1) < len(s2):
+        return get_levenshtein_distance(s2, s1)
+    if len(s2) == 0:
+        return len(s1)
+    
+    previous_row = range(len(s2) + 1)
+    for i, c1 in enumerate(s1):
+        current_row = [i + 1]
+        for j, c2 in enumerate(s2):
+            insertions = previous_row[j + 1] + 1
+            deletions = current_row[j] + 1
+            substitutions = previous_row[j] + (c1 != c2)
+            current_row.append(min(insertions, deletions, substitutions))
+        previous_row = current_row
+        
+    return previous_row[-1]
+
 
 class TenantService:
     def __init__(self, db: Session) -> None:
@@ -62,6 +80,26 @@ class TenantService:
             )
             raise
 
+    def validate_slug(self, slug: str, exclude_id: uuid.UUID | None = None) -> str:
+        slug_clean = slug.strip().lower()
+        
+        # Check exact match
+        existing = self.get_tenant_by_slug(slug_clean)
+        if existing and (exclude_id is None or existing.id != exclude_id):
+            raise ValueError(f"Ya existe un tenant con el slug '{slug_clean}'")
+
+        # Check similarity (Levenshtein distance <= 1)
+        existing_tenants = self.tenant_repo.find_all(limit=1000)
+        for t in existing_tenants:
+            if exclude_id and t.id == exclude_id:
+                continue
+            if get_levenshtein_distance(slug_clean, t.slug.lower()) <= 1:
+                raise ValueError(
+                    f"El slug '{slug_clean}' es extremadamente similar al slug existente '{t.slug}'. "
+                    "Elige un slug más diferente para evitar confusiones."
+                )
+        return slug_clean
+
     def create_tenant(
         self,
         slug: str,
@@ -69,10 +107,8 @@ class TenantService:
         config: dict[str, Any],
     ) -> Tenant:
         try:
-            if self.tenant_repo.exists_by_slug(slug):
-                raise ValueError(f"Tenant with slug '{slug}' already exists")
-
-            tenant = Tenant(slug=slug, name=name, config=config)
+            slug_clean = self.validate_slug(slug)
+            tenant = Tenant(slug=slug_clean, name=name, config=config)
             return self.tenant_repo.save(tenant)
         except Exception as e:
             logger.error("TenantService.create_tenant failed [slug=%s]: %s", slug, e)
