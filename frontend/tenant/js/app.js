@@ -273,7 +273,7 @@ class TenantApp {
                 }
             });
         }
-    } }
+    }
 
     setupQueueFilters() {
         const filterState = document.getElementById('queueFilterState');
@@ -541,7 +541,8 @@ class TenantApp {
             `;
             tbody.appendChild(tr);
         });
-        document.getElementById('productCount').textContent = filtered.length;
+        const productCountEl = document.getElementById('productCount');
+        if (productCountEl) productCountEl.textContent = filtered.length;
     }
 
     async toggleProductStatus(id, isChecked) {
@@ -583,7 +584,8 @@ class TenantApp {
                 `;
                 tbody.appendChild(tr);
             });
-            document.getElementById('kbCount').textContent = entries.length;
+            const kbCountEl = document.getElementById('kbCount');
+            if (kbCountEl) kbCountEl.textContent = entries.length;
         } catch (err) {
             console.error('KB load failed:', err);
         }

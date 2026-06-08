@@ -63,16 +63,23 @@ def run_tests():
             
         page.on("dialog", handle_dialog)
         
+        # Console & error logging to debug browser issues
+        page.on("console", lambda msg: print(f"[BROWSER CONSOLE] {msg.type}: {msg.text}"))
+        page.on("pageerror", lambda err: print(f"[BROWSER ERROR] {err}"))
+        
         # -----------------------------------------------------------------------
         # PASO 1: Ingreso al Portal de Administración
         # -----------------------------------------------------------------------
         print("\n[Paso 1] Navegando al Portal de Administración...")
         page.goto(f"{BASE_URL}/admin/")
+        # Limpiar localStorage para forzar login de admin
+        page.evaluate("() => localStorage.clear()")
+        page.reload()
         
         print("Ingresando credenciales de administrador principal...")
         # El username "admin" es de solo lectura, ingresamos la clave
         page.fill("#loginPassword", ADMIN_API_KEY)
-        page.click("button[type='submit']")
+        page.click("#loginForm button[type='submit']")
         
         # Esperar a que se oculte el modal de login y cargue la vista
         page.wait_for_selector("#tenantCount")
@@ -84,48 +91,53 @@ def run_tests():
         # -----------------------------------------------------------------------
         print("\n[Paso 2] Probando combinatorias de creación de Tenant...")
         
+        # Generar sufijo único para hacer la prueba idempotente y evitar colisión
+        import random
+        suffix = str(random.randint(1000, 9999))
+        tenant_slug_manual = f"test_manual_{suffix}"
+        tenant_slug_auto = f"test_auto_{suffix}"
+        
         # Navegar a la pestaña de Tenants para hacer visible el botón
         page.click("a[data-section='tenants']")
         page.wait_for_selector("#addTenantBtn")
         
         # --- Caso A: Tenant con contraseña manual ---
-        print("-> Caso A: Creando tenant 'test_manual' con contraseña explícita...")
+        print(f"-> Caso A: Creando tenant '{tenant_slug_manual}' con contraseña explícita...")
         page.click("#addTenantBtn")
         page.wait_for_selector("#tenantForm")
         
-        page.fill("#tenantSlug", "test_manual")
-        page.fill("#tenantName", "Botillería Test Manual")
+        page.fill("#tenantSlug", tenant_slug_manual)
+        page.fill("#tenantName", f"Botillería Test Manual {suffix}")
         page.fill("#tenantPortalToken", "manualpassword123")
         page.fill("#tenantInstruction", "Eres el bot de pruebas manuales. Sé divertido y ágil.")
-        page.click("button[type='submit']")
+        page.click("#tenantForm button[type='submit']")
         time.sleep(2) # Esperar a que se procese, se lance y se acepte la alerta
-        print("[OK] Tenant 'test_manual' creado con contraseña 'manualpassword123'.")
+        print(f"[OK] Tenant '{tenant_slug_manual}' creado con contraseña 'manualpassword123'.")
         
         # --- Caso B: Tenant con contraseña autogenerada ---
-        print("\n-> Caso B: Creando tenant 'test_auto' con contraseña autogenerada...")
+        print(f"\n-> Caso B: Creando tenant '{tenant_slug_auto}' con contraseña autogenerada...")
         page.click("#addTenantBtn")
         page.wait_for_selector("#tenantForm")
         
-        page.fill("#tenantSlug", "test_auto")
-        page.fill("#tenantName", "Botillería Autogenerada")
+        page.fill("#tenantSlug", tenant_slug_auto)
+        page.fill("#tenantName", f"Botillería Autogenerada {suffix}")
         # Dejamos la clave vacía para activar la autogeneración en el backend
         page.fill("#tenantPortalToken", "")
         page.fill("#tenantInstruction", "") # Sin prompt para probar el fallback global
-        page.click("button[type='submit']")
+        page.click("#tenantForm button[type='submit']")
         time.sleep(2) # Esperar a que se procese, se lance y se acepte la alerta
-        print(f"[OK] Tenant 'test_auto' creado. Clave autogenerada capturada: '{captured_auto_password}'")
+        print(f"[OK] Tenant '{tenant_slug_auto}' creado. Clave autogenerada capturada: '{captured_auto_password}'")
 
         # -----------------------------------------------------------------------
         # PASO 3: Cambio de Contraseña de Tenant (Regla de Negocio)
         # -----------------------------------------------------------------------
         print("\n[Paso 3] Probando cambio de contraseña en panel de admin...")
-        # En la tabla de tenants, buscamos la fila del tenant 'test_manual' y hacemos clic en el botón de Clave
-        # Localizamos el botón "🔑 Clave" del tenant 'test_manual'
-        key_button_selector = "//tr[td[text()='test_manual']]//button[contains(text(), '🔑 Clave')]"
+        # En la tabla de tenants, buscamos la fila del tenant y hacemos clic en el botón de Clave
+        key_button_selector = f"//tr[td[text()='{tenant_slug_manual}']]//button[contains(text(), '🔑 Clave')]"
         page.click(key_button_selector)
         page.wait_for_selector("#passwordForm")
         
-        print("Cambiando la contraseña de 'test_manual' a 'newsecurepassword99'...")
+        print(f"Cambiando la contraseña de '{tenant_slug_manual}' a 'newsecurepassword99'...")
         page.fill("#newPortalToken", "newsecurepassword99")
         page.click("#passwordForm button[type='submit']")
         time.sleep(1)
@@ -136,14 +148,17 @@ def run_tests():
         # -----------------------------------------------------------------------
         print("\n[Paso 4] Navegando al Portal del Tenant e iniciando sesión...")
         page.goto(f"{BASE_URL}/tenant/")
+        # Limpiar localStorage para forzar que se muestre el formulario de login
+        page.evaluate("() => localStorage.clear()")
+        page.reload()
         
-        print("Ingresando credenciales del Tenant 'test_manual'...")
+        print(f"Ingresando credenciales del Tenant '{tenant_slug_manual}'...")
         # Llenamos las credenciales en el login de tenant
         page.wait_for_selector("#loginForm")
         # En la interfaz de login, el campo de usuario tiene el id 'loginUsername'
-        page.fill("#loginUsername", "test_manual")
+        page.fill("#loginUsername", tenant_slug_manual)
         page.fill("#loginPassword", "newsecurepassword99")
-        page.click("button[type='submit']")
+        page.click("#loginForm button[type='submit']")
         
         # Esperamos a que cargue la interfaz del tenant
         page.wait_for_selector("a[data-section='products']")
@@ -152,7 +167,29 @@ def run_tests():
         # -----------------------------------------------------------------------
         # PASO 5: Combinatoria de Gestión de Productos
         # -----------------------------------------------------------------------
-        print("\n[Paso 5] Probando creación y edición de productos en el catálogo...")
+        print("\n[Paso 5] Creando categorías y probando creación/edición de productos...")
+        
+        # --- Crear Categoría Cervezas ---
+        print("Creando categoría 'Cervezas'...")
+        page.click("a[data-section='categories']")
+        page.wait_for_selector("#addCategoryBtn")
+        page.click("#addCategoryBtn")
+        page.wait_for_selector("#categoryForm")
+        page.fill("#catName", "Cervezas")
+        page.fill("#catDesc", "Todo tipo de cervezas y cervezas artesanales")
+        page.click("#categoryForm button[type='submit']")
+        time.sleep(1.5)
+        
+        # --- Crear Categoría Destilados ---
+        print("Creando categoría 'Destilados'...")
+        page.click("#addCategoryBtn")
+        page.wait_for_selector("#categoryForm")
+        page.fill("#catName", "Destilados")
+        page.fill("#catDesc", "Pisco, Ron, Whisky, Vodka y otros destilados")
+        page.click("#categoryForm button[type='submit']")
+        time.sleep(1.5)
+        
+        # --- Ir a Productos ---
         page.click("a[data-section='products']")
         page.wait_for_selector("#addProductBtn")
         
@@ -161,13 +198,13 @@ def run_tests():
         page.click("#addProductBtn")
         page.wait_for_selector("#productForm")
         
-        page.fill("#productName", "Cerveza Corona Extra 355ml")
-        page.fill("#productDescription", "Cerveza rubia tipo lager, importada de México.")
-        page.fill("#productPrice", "1500")
-        page.fill("#productStock", "24")
-        page.fill("#productCategory", "Cervezas")
+        page.fill("#prodName", "Cerveza Corona Extra 355ml")
+        page.fill("#prodDesc", "Cerveza rubia tipo lager, importada de México.")
+        page.fill("#prodPrice", "1500")
+        page.fill("#prodStock", "24")
+        page.select_option("#prodCategory", value="Cervezas")
         page.click("#productForm button[type='submit']")
-        time.sleep(1)
+        time.sleep(1.5)
         print("[OK] Producto 1 creado.")
         
         # --- Crear Producto 2 ---
@@ -175,13 +212,13 @@ def run_tests():
         page.click("#addProductBtn")
         page.wait_for_selector("#productForm")
         
-        page.fill("#productName", "Pisco Mistral 35º 750ml")
-        page.fill("#productDescription", "Pisco de uvas Pedro Jiménez y Moscatel envejecido en barricas de roble.")
-        page.fill("#productPrice", "7200")
-        page.fill("#productStock", "12")
-        page.fill("#productCategory", "Destilados")
+        page.fill("#prodName", "Pisco Mistral 35º 750ml")
+        page.fill("#prodDesc", "Pisco de uvas Pedro Jiménez y Moscatel envejecido en barricas de roble.")
+        page.fill("#prodPrice", "7200")
+        page.fill("#prodStock", "12")
+        page.select_option("#prodCategory", value="Destilados")
         page.click("#productForm button[type='submit']")
-        time.sleep(1)
+        time.sleep(1.5)
         print("[OK] Producto 2 creado.")
         
         # --- Editar Producto ---
@@ -192,10 +229,10 @@ def run_tests():
         page.wait_for_selector("#productForm")
         
         # Editamos el precio a 1600 y stock a 48
-        page.fill("#productPrice", "1600")
-        page.fill("#productStock", "48")
+        page.fill("#prodPrice", "1600")
+        page.fill("#prodStock", "48")
         page.click("#productForm button[type='submit']")
-        time.sleep(1)
+        time.sleep(1.5)
         print("[OK] Producto modificado con éxito.")
         
         # -----------------------------------------------------------------------
@@ -203,7 +240,7 @@ def run_tests():
         # -----------------------------------------------------------------------
         print("\n[Paso 6] Probando toggle de disponibilidad humana en el panel...")
         page.click("a[data-section='dashboard']")
-        page.wait_for_selector("#humanAvailableToggle")
+        page.wait_for_selector(".human-available-toggle label.switch")
         
         # Hacemos clic en el toggle para cambiar el estado
         print("Activando disponibilidad humana...")
@@ -219,11 +256,33 @@ def run_tests():
         print(f"Estado de disponibilidad en pantalla: '{status_text}'")
         print("[OK] Disponibilidad humana probada.")
 
-        # Finalización
-        print("\n=====================================================================")
-        print(" ✓ TODAS LAS PRUEBAS E2E TERMINARON EXITOSAMENTE ")
-        print("=====================================================================")
-        time.sleep(2)
+        # -----------------------------------------------------------------------
+        # PASO 7: Limpieza de Datos de Prueba (Eliminar tenants creados)
+        # -----------------------------------------------------------------------
+        print("\n[Paso 7] Limpiando datos de prueba (Eliminando tenants creados)...")
+        page.goto(f"{BASE_URL}/admin/")
+        if page.locator("#loginPassword").is_visible():
+            print("Iniciando sesión en el Portal de Administración para limpieza...")
+            page.fill("#loginPassword", ADMIN_API_KEY)
+            page.click("#loginForm button[type='submit']")
+        
+        page.wait_for_selector("#tenantCount")
+        page.click("a[data-section='tenants']")
+        page.wait_for_selector("#addTenantBtn")
+        
+        # Eliminar tenant_slug_manual
+        delete_manual_selector = f"//tr[td[text()='{tenant_slug_manual}']]//button[contains(text(), 'Eliminar')]"
+        print(f"Eliminando tenant '{tenant_slug_manual}'...")
+        page.click(delete_manual_selector)
+        time.sleep(1.5)
+        
+        # Eliminar tenant_slug_auto
+        delete_auto_selector = f"//tr[td[text()='{tenant_slug_auto}']]//button[contains(text(), 'Eliminar')]"
+        print(f"Eliminando tenant '{tenant_slug_auto}'...")
+        page.click(delete_auto_selector)
+        time.sleep(1.5)
+        print("[OK] Limpieza completada.")
+
         browser.close()
 
 if __name__ == "__main__":
