@@ -48,6 +48,21 @@ def run_tests():
         context = browser.new_context(viewport={"width": 1280, "height": 800})
         page = context.new_page()
         
+        captured_auto_password = ""
+
+        # Manejador global de alertas/diálogos de JavaScript
+        def handle_dialog(dialog):
+            nonlocal captured_auto_password
+            msg = dialog.message
+            print(f"[ALERT DIALOG] {msg}")
+            if "Contraseña:" in msg:
+                for line in msg.split("\n"):
+                    if "Contraseña:" in line:
+                        captured_auto_password = line.split(":", 1)[1].strip()
+            dialog.accept()
+            
+        page.on("dialog", handle_dialog)
+        
         # -----------------------------------------------------------------------
         # PASO 1: Ingreso al Portal de Administración
         # -----------------------------------------------------------------------
@@ -60,7 +75,7 @@ def run_tests():
         page.click("button[type='submit']")
         
         # Esperar a que se oculte el modal de login y cargue la vista
-        page.wait_for_selector("#addTenantBtn")
+        page.wait_for_selector("#tenantCount")
         print("[OK] ¡Sesión iniciada con éxito como Administrador!")
         time.sleep(1)
 
@@ -68,6 +83,10 @@ def run_tests():
         # PASO 2: Creación de Tenants con Combinación de Claves (Manual y Auto)
         # -----------------------------------------------------------------------
         print("\n[Paso 2] Probando combinatorias de creación de Tenant...")
+        
+        # Navegar a la pestaña de Tenants para hacer visible el botón
+        page.click("a[data-section='tenants']")
+        page.wait_for_selector("#addTenantBtn")
         
         # --- Caso A: Tenant con contraseña manual ---
         print("-> Caso A: Creando tenant 'test_manual' con contraseña explícita...")
@@ -79,15 +98,7 @@ def run_tests():
         page.fill("#tenantPortalToken", "manualpassword123")
         page.fill("#tenantInstruction", "Eres el bot de pruebas manuales. Sé divertido y ágil.")
         page.click("button[type='submit']")
-        
-        # El navegador disparará una alerta (JavaScript alert) con las credenciales
-        # Configuramos un handler para capturarla y cerrarla automáticamente
-        def handle_alert(dialog):
-            print(f"[ALERT DIALOG] {dialog.message}")
-            dialog.accept()
-            
-        page.once("dialog", handle_alert)
-        time.sleep(1) # Esperar a que el modal se procese y lance la alerta
+        time.sleep(2) # Esperar a que se procese, se lance y se acepte la alerta
         print("[OK] Tenant 'test_manual' creado con contraseña 'manualpassword123'.")
         
         # --- Caso B: Tenant con contraseña autogenerada ---
@@ -100,21 +111,8 @@ def run_tests():
         # Dejamos la clave vacía para activar la autogeneración en el backend
         page.fill("#tenantPortalToken", "")
         page.fill("#tenantInstruction", "") # Sin prompt para probar el fallback global
-        
-        captured_auto_password = ""
-        def handle_auto_alert(dialog):
-            nonlocal captured_auto_password
-            msg = dialog.message
-            print(f"[ALERT DIALOG] {msg}")
-            # Extraer contraseña del mensaje de alerta
-            for line in msg.split("\n"):
-                if "Contraseña:" in line:
-                    captured_auto_password = line.split(":", 1)[1].strip()
-            dialog.accept()
-            
-        page.once("dialog", handle_auto_alert)
         page.click("button[type='submit']")
-        time.sleep(1)
+        time.sleep(2) # Esperar a que se procese, se lance y se acepte la alerta
         print(f"[OK] Tenant 'test_auto' creado. Clave autogenerada capturada: '{captured_auto_password}'")
 
         # -----------------------------------------------------------------------
