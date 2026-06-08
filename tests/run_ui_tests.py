@@ -128,6 +128,26 @@ def run_tests():
         time.sleep(2) # Esperar a que se procese, se lance y se acepte la alerta
         print(f"[OK] Tenant '{tenant_slug_auto}' creado. Clave autogenerada capturada: '{captured_auto_password}'")
 
+        # --- Caso C: Intento de crear Tenant similar (Levenshtein distance <= 1) ---
+        print(f"\n-> Caso C: Intentando crear tenant con slug similar a '{tenant_slug_manual}'...")
+        page.click("#addTenantBtn")
+        page.wait_for_selector("#tenantForm")
+        
+        similar_slug = f"{tenant_slug_manual}_"
+        page.fill("#tenantSlug", similar_slug)
+        page.fill("#tenantName", f"Botillería Similar {suffix}")
+        page.fill("#tenantPortalToken", "somepassword123")
+        
+        page.click("#tenantForm button[type='submit']")
+        
+        page.wait_for_selector(".toast.error")
+        toast_msg = page.locator(".toast.error").inner_text()
+        print(f"[OK] Se rechazó la creación del tenant con slug similar. Mensaje recibido: '{toast_msg}'")
+        assert "extremadamente similar" in toast_msg
+        
+        page.click("#modalClose")
+        time.sleep(1)
+
         # -----------------------------------------------------------------------
         # PASO 3: Cambio de Contraseña de Tenant (Regla de Negocio)
         # -----------------------------------------------------------------------
@@ -235,6 +255,91 @@ def run_tests():
         time.sleep(1.5)
         print("[OK] Producto modificado con éxito.")
         
+        # --- Caso C: Intento de crear producto duplicado exacto ---
+        print("\n-> Caso C: Intentando crear un producto duplicado exacto ('Cerveza Corona Extra 355ml')...")
+        page.click("#addProductBtn")
+        page.wait_for_selector("#productForm")
+        page.fill("#prodName", "Cerveza Corona Extra 355ml")
+        page.fill("#prodPrice", "1200")
+        page.select_option("#prodCategory", value="Cervezas")
+        page.click("#productForm button[type='submit']")
+        
+        page.wait_for_selector(".toast.error")
+        toast_msg = page.locator(".toast.error").inner_text()
+        print(f"[OK] Recibido error esperado de duplicado: '{toast_msg}'")
+        assert "Ya existe un producto con el nombre exacto" in toast_msg
+        page.click("#modalClose")
+        time.sleep(1)
+
+        # --- Caso D: Intento de crear producto ambiguo sin especificación de formato ---
+        print("\n-> Caso D: Intentando crear producto con nombre base similar pero sin presentación...")
+        page.click("#addProductBtn")
+        page.wait_for_selector("#productForm")
+        page.fill("#prodName", "Cerveza Corona Extra")
+        page.fill("#prodPrice", "1000")
+        page.select_option("#prodCategory", value="Cervezas")
+        page.click("#productForm button[type='submit']")
+        
+        page.wait_for_selector(".toast.error")
+        toast_msg = page.locator(".toast.error").inner_text()
+        print(f"[OK] Recibido error esperado de ambigüedad: '{toast_msg}'")
+        assert "es ambiguo con el producto existente" in toast_msg
+        page.click("#modalClose")
+        time.sleep(1)
+
+        # --- Caso E: Crear productos con presentaciones distintas (Permitido) ---
+        print("\n-> Caso E: Creando productos con el mismo nombre base pero distintas presentaciones (Permitido)...")
+        page.click("#addProductBtn")
+        page.wait_for_selector("#productForm")
+        page.fill("#prodName", "Cerveza Corona 1L")
+        page.fill("#prodPrice", "2500")
+        page.select_option("#prodCategory", value="Cervezas")
+        page.click("#productForm button[type='submit']")
+        time.sleep(1.5)
+        print("[OK] Producto 'Cerveza Corona 1L' creado exitosamente.")
+
+        # --- Caso F: Crear producto con misma presentación (Bloqueado) ---
+        print("\n-> Caso F: Intentando crear producto con la misma presentación que uno existente ('Cerveza Corona 1L')...")
+        page.click("#addProductBtn")
+        page.wait_for_selector("#productForm")
+        page.fill("#prodName", "Cerveza Corona - 1L")
+        page.fill("#prodPrice", "2600")
+        page.select_option("#prodCategory", value="Cervezas")
+        page.click("#productForm button[type='submit']")
+        
+        page.wait_for_selector(".toast.error")
+        toast_msg = page.locator(".toast.error").inner_text()
+        print(f"[OK] Recibido error esperado de misma presentación: '{toast_msg}'")
+        assert "tiene el mismo formato/presentación" in toast_msg
+        page.click("#modalClose")
+        time.sleep(1)
+
+        # --- Caso G: Validación de campos numéricos (Negativos) ---
+        print("\n-> Caso G: Intentando ingresar precios y stock negativos...")
+        page.click("#addProductBtn")
+        page.wait_for_selector("#productForm")
+        
+        page.fill("#prodName", "Cerveza Corona 2L")
+        page.fill("#prodPrice", "-500")
+        page.fill("#prodStock", "-10")
+        page.select_option("#prodCategory", value="Cervezas")
+        
+        page.click("#productForm button[type='submit']")
+        time.sleep(1.5)
+        assert page.locator("#productForm").is_visible(), "El formulario se envió a pesar de tener valores negativos en HTML5!"
+        print("[OK] El formulario de creación no se envió (bloqueado por validación HTML5 de valores negativos).")
+        
+        print("Removiendo el atributo 'min' vía JS para probar la validación del Backend...")
+        page.evaluate("() => { document.getElementById('prodPrice').removeAttribute('min'); document.getElementById('prodStock').removeAttribute('min'); }")
+        page.click("#productForm button[type='submit']")
+        
+        page.wait_for_selector(".toast.error")
+        toast_msg = page.locator(".toast.error").inner_text()
+        print(f"[OK] El backend rechazó los valores negativos. Mensaje del toast: '{toast_msg}'")
+        assert "greater than or equal to 0" in toast_msg or "mayor o igual a 0" in toast_msg or "value" in toast_msg
+        page.click("#modalClose")
+        time.sleep(1)
+
         # -----------------------------------------------------------------------
         # PASO 6: Prueba de Disponibilidad Humana (Visual y Funcional)
         # -----------------------------------------------------------------------

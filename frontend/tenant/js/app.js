@@ -105,7 +105,15 @@ class TenantApp {
         });
         if (!res.ok) {
             const error = await res.json().catch(() => ({ error: 'Error desconocido' }));
-            throw new Error(error.error || `HTTP ${res.status}`);
+            let errMsg = error.error;
+            if (!errMsg && error.detail) {
+                if (Array.isArray(error.detail)) {
+                    errMsg = error.detail.map(err => `${err.loc.join('.')}: ${err.msg}`).join(', ');
+                } else {
+                    errMsg = error.detail;
+                }
+            }
+            throw new Error(errMsg || `HTTP ${res.status}`);
         }
         return res.json();
     }
